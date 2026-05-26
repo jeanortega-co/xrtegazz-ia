@@ -2,19 +2,38 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>XRTEGAZZ IA</title>
     <style>
-        body { margin: 0; min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: radial-gradient(circle at top, #2a0808 0%, #0d0d11 60%, #050507 100%); color: #f5f5f7; display: flex; justify-content: center; align-items: center; padding: 20px; }
-        .app { width: min(100%, 720px); background: rgba(13, 13, 15, 0.98); border: 1px solid rgba(255, 51, 51, 0.15); border-radius: 24px; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.85), 0 0 30px rgba(230, 0, 0, 0.05); overflow: hidden; position: relative; }
-        .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; background: linear-gradient(90deg, rgba(163, 0, 0, 0.12), rgba(0, 0, 0, 0.6)); border-bottom: 1px solid rgba(255, 51, 51, 0.18); }
+        html {
+            background: #050507; /* Color sólido base para evitar parpadeos blancos */
+            overscroll-behavior: none; /* 🚫 Evita el efecto rebote de papel en navegadores modernos */
+            height: 100%;
+        }
+        body { 
+            margin: 0; 
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            /* Fijamos el degradado de fondo para que no se mueva al scrollear */
+            background: radial-gradient(circle at top, #2a0808 0%, #0d0d11 60%, #050507 100%) no-repeat center center fixed; 
+            background-size: cover;
+            color: #f5f5f7; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 20px; 
+            box-sizing: border-box; 
+            overscroll-behavior-y: none; /* Bloqueo extra para iOS */
+        }
+        .app { width: min(100%, 720px); background: rgba(13, 13, 15, 0.98); border: 1px solid rgba(255, 51, 51, 0.15); border-radius: 24px; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.85), 0 0 30px rgba(230, 0, 0, 0.05); overflow: hidden; position: relative; display: flex; flex-direction: column; }
+        .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; background: linear-gradient(90deg, rgba(163, 0, 0, 0.12), rgba(0, 0, 0, 0.6)); border-bottom: 1px solid rgba(255, 51, 51, 0.18); flex-shrink: 0; }
         .topbar-info { display: flex; align-items: center; gap: 14px; }
-        .avatar { width: 48px; height: 48px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #ff3333, #800000); display: grid; place-items: center; font-size: 20px; font-weight: 800; color: #ffffff; box-shadow: 0 0 15px rgba(230, 0, 0, 0.3); border: 1px solid #ff4d4d; }
+        .avatar { width: 48px; height: 48px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #ff3333, #800000); display: grid; place-items: center; font-size: 20px; font-weight: 800; color: #ffffff; box-shadow: 0 0 15px rgba(230, 0, 0, 0.3); border: 1px solid #ff4d4d; flex-shrink: 0; }
         .topbar h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.05em; font-weight: 800; color: #ffffff; }
         .topbar p { margin: 4px 0 0; color: #cca3a3; opacity: 0.8; font-size: 0.85rem; }
-        .auth-trigger-btn { background: linear-gradient(135deg, #cc0000, #7a0000); border: 1px solid #ff3333; color: #ffffff; padding: 8px 16px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: all 0.2s ease; }
-        .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 7, 0.85); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 100; }
-        .modal-card { width: 85%; max-width: 450px; background: #0d0d0f; border: 1px solid rgba(255, 51, 51, 0.25); border-radius: 20px; padding: 24px; position: relative; }
+        .auth-trigger-btn { background: linear-gradient(135deg, #cc0000, #7a0000); border: 1px solid #ff3333; color: #ffffff; padding: 8px 16px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: all 0.2s ease; white-space: nowrap; }
+        .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 7, 0.85); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 100; padding: 10px; box-sizing: border-box; }
+        .modal-card { width: 100%; max-width: 450px; background: #0d0d0f; border: 1px solid rgba(255, 51, 51, 0.25); border-radius: 20px; padding: 24px; position: relative; box-sizing: border-box; max-height: 90vh; overflow-y: auto; }
         .close-modal { position: absolute; top: 14px; right: 16px; background: transparent; border: none; color: #cca3a3; font-size: 1.3rem; cursor: pointer; }
         .auth-tabs { display: flex; gap: 16px; border-bottom: 1px solid rgba(255, 51, 51, 0.15); margin-bottom: 18px; }
         .auth-tab { background: transparent; border: none; color: #cca3a3; font-size: 1rem; font-weight: 700; padding: 8px 4px; cursor: pointer; }
@@ -22,17 +41,17 @@
         .form-group { display: grid; gap: 5px; margin-bottom: 14px; }
         .form-group input { background: #141417; border: 1px solid rgba(255, 51, 51, 0.18); padding: 10px 12px; border-radius: 10px; color: #ffffff; outline: none; }
         .auth-btn { width: 100%; border: none; border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #cc0000, #7a0000); color: #ffffff; font-weight: 700; cursor: pointer; }
-        .chat { padding: 24px; display: flex; flex-direction: column; gap: 14px; height: 380px; overflow-y: auto; background: #070709; }
-        .message { padding: 12px 16px; border-radius: 16px; font-size: 0.93rem; max-width: 75%; }
+        .chat { padding: 24px; display: flex; flex-direction: column; gap: 14px; height: 420px; overflow-y: auto; background: #070709; flex-grow: 1; }
+        .message { padding: 12px 16px; border-radius: 16px; font-size: 0.93rem; max-width: 80%; word-break: break-word; }
         .message.user { align-self: flex-end; background: rgba(255, 51, 51, 0.08); border: 1px solid rgba(255, 51, 51, 0.22); }
         .message.assistant { align-self: flex-start; background: #121216; border: 1px solid rgba(255, 255, 255, 0.04); }
-        .input-area { padding: 18px 24px 24px; background: #0d0d0f; border-top: 1px solid rgba(255, 51, 51, 0.1); }
-        .input-area textarea { width: 100%; min-height: 64px; box-sizing: border-box; resize: none; border: 1px solid rgba(255, 51, 51, 0.18); border-radius: 14px; background: #141417; color: #ffffff; padding: 12px; outline: none; }
-        .input-area button { width: 100%; border: none; border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #cc0000, #7a0000); color: #ffffff; font-weight: 700; cursor: pointer; margin-top: 10px; }
+        .input-area { padding: 18px 24px 24px; background: #0d0d0f; border-top: 1px solid rgba(255, 51, 51, 0.1); flex-shrink: 0; }
+        .input-area textarea { width: 100%; min-height: 50px; max-height: 120px; box-sizing: border-box; resize: none; border: 1px solid rgba(255, 51, 51, 0.18); border-radius: 14px; background: #141417; color: #ffffff; padding: 12px; outline: none; font-size: 1rem; }
+        .input-area button { width: 100%; border: none; border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #cc0000, #7a0000); color: #ffffff; font-weight: 700; cursor: pointer; margin-top: 10px; font-size: 1rem; }
         .chip { padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.02); color: #ffcccc; border: 1px solid rgba(255, 51, 51, 0.12); cursor: pointer; font-size: 0.8rem; }
         .hidden { display: none !important; }
 
-        /* 🤖 ESTILOS DE LA ANIMACIÓN DE ESCRITURA */
+        /* 🤖 ANIMACIÓN DE ESCRITURA */
         .typing-container { display: flex; align-items: center; gap: 5px; height: 20px; margin-top: 5px; }
         .typing-container span { width: 7px; height: 7px; background: #ff3333; border-radius: 50%; display: inline-block; animation: bounce 1.3s infinite ease-in-out both; }
         .typing-container span:nth-child(1) { animation-delay: -0.32s; }
@@ -40,6 +59,27 @@
         @keyframes bounce {
             0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
             40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* 📱 MEDIA QUERIES PARA DISPOSITIVOS MÓVILES */
+        @media (max-width: 600px) {
+            body { padding: 0; background: #050507; }
+            .app { width: 100vw; height: 100vh; height: -webkit-fill-available; border: none; border-radius: 0; }
+            .topbar { padding: 12px 16px; gap: 8px; }
+            .avatar { width: 38px; height: 38px; font-size: 16px; }
+            .topbar h1 { font-size: 1.15rem; }
+            .topbar p { font-size: 0.75rem; display: none; } 
+            .auth-trigger-btn { padding: 6px 12px; font-size: 0.75rem; border-radius: 8px; }
+            .chat { padding: 16px; height: auto; } 
+            .message { max-width: 85%; font-size: 0.9rem; }
+            .input-area { padding: 12px 16px 16px; }
+            
+            #modal-admin .modal-card { width: 95%; height: 85vh; padding: 16px; }
+            #modal-admin .modal-card h2 { font-size: 1.3rem; margin-top: 10px; }
+            #modal-admin .modal-card > div { flex-direction: column !important; height: calc(100% - 50px) !important; gap: 12px !important; }
+            #admin-lista-usuarios { width: 100% !important; height: 30% !important; border-right: none !important; border-bottom: 1px solid #333; padding-bottom: 8px; display: flex; gap: 6px; overflow-x: auto; white-space: nowrap; }
+            #admin-lista-usuarios .chip { margin-bottom: 0 !important; display: inline-block; }
+            #admin-visor-mensajes { width: 100% !important; height: 70% !important; }
         }
     </style>
 </head>
@@ -53,7 +93,7 @@
                     <p id="topbar-subtitle">Tu asistente inteligente local operativo.</p>
                 </div>
             </div>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:8px; flex-shrink: 0;">
                 <button id="btn-admin-panel" class="auth-trigger-btn hidden" onclick="abrirAdminPanel()" style="background:#5e0000; border-color:#ff4d4d;">Admin</button>
                 <button id="btn-auth-trigger" class="auth-trigger-btn" onclick="abrirModal()">Iniciar Sesión</button>
             </div>
@@ -207,7 +247,11 @@
         async function establecerUsuarioUI(nombre) {
             usuarioLogueado = nombre;
             document.getElementById('btn-auth-trigger').innerText = `Salir (${nombre})`;
-            document.getElementById('topbar-subtitle').innerText = `Sesión autorizada de: ${nombre}`;
+            
+            if (window.innerWidth > 600) {
+                document.getElementById('topbar-subtitle').innerText = `Sesión autorizada de: ${nombre}`;
+            }
+            
             document.getElementById('msg-bienvenida').innerHTML = `<small>XRTEGAZZ IA</small><div>¡Un placer verte de nuevo, <strong>${nombre}</strong>! Tu historial y configuraciones locales están listos. ¿Qué orden ejecutamos hoy?</div>`;
             cargarHistorialServidor();
         }
@@ -285,10 +329,9 @@
             }
         }
 
-        // ⌨️ ESCUCHADOR PARA ENVIAR CON ENTER Y HACER SALTO DE LÍNEA CON SHIFT + ENTER
         document.getElementById('mensaje').addEventListener('keydown', function(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault(); // Evita el salto de línea por defecto
+                event.preventDefault(); 
                 enviarOrden();
             }
         });

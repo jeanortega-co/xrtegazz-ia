@@ -20,24 +20,69 @@ app.secret_key = os.environ.get("SECRET_KEY", "clave_por_defecto_segura_2026")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
 # =========================================================================
-# 🗄️ CONFIGURACIÓN Y CONEXIÓN A BASE DE DATOS MYSQL
+# 🗄️ CONFIGURACIÓN Y CONEXIÓN A BASE DE DATOS MYSQL (AIVEN CLOUD READY)
 # =========================================================================
 DB_CONFIG = {
     'host': os.environ.get("DB_HOST", "localhost"),
     'user': os.environ.get("DB_USER", "root"),       
     'password': os.environ.get("DB_PASSWORD", ""),       
-    'database': os.environ.get("DB_NAME", "xrtegazz_db")
+    'database': os.environ.get("DB_NAME", "xrtegazz_db"),
+    'port': int(os.environ.get("DB_PORT", 3306))
 }
 
 def obtener_conexion_db():
-    """Establece una conexión limpia con la base de datos MySQL."""
+    """Establece una conexión limpia y segura con la base de datos MySQL."""
     try:
-        conexion = mysql.connector.connect(**DB_CONFIG)
+        if "aivencloud.com" in DB_CONFIG['host']:
+            conexion = mysql.connector.connect(
+                **DB_CONFIG,
+                ssl_disabled=False
+            )
+        else:
+            conexion = mysql.connector.connect(**DB_CONFIG)
+            
         if conexion.is_connected():
             return conexion
     except Error as e:
         print(f"❌ Error al conectar a MySQL: {e}")
         return None
+
+def inicializar_tablas_db():
+    """Crea las tablas automáticamente en la nube si no existen."""
+    conexion = obtener_conexion_db()
+    if not conexion:
+        return
+    try:
+        cursor = conexion.cursor()
+        # 1. Crear tabla de usuarios
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(50) NOT NULL UNIQUE,
+                password_hash VARCHAR(255) NOT NULL,
+                rol VARCHAR(20) NOT NULL,
+                nombre VARCHAR(100) NOT NULL,
+                fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # 2. Crear tabla de historial
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS historial_chat (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(50) NOT NULL,
+                role VARCHAR(20) NOT NULL,
+                content TEXT NOT NULL,
+                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conexion.commit()
+        print("📁 Estructura de tablas verificada/creada con éxito en la nube.")
+    except Error as e:
+        print(f"❌ Error al crear las tablas base: {e}")
+    finally:
+        if conexion.is_connected():
+            cursor.close()
+            conexion.close()
 
 # =========================================================================
 # 🧠 SEMILLERO AUTOMÁTICO DE USUARIOS EN BASE DE DATOS
@@ -60,7 +105,7 @@ def verificar_e_insertar_usuario_defecto(username, password_plano, nombre, rol):
         hash_pwd = generate_password_hash(password_plano)
         cursor.execute(query, (username, hash_pwd, rol, nombre))
         conexion.commit()
-        print(f"✅ Usuario base verificado/creado: @{username}")
+        print(f"✅ Usuario base verificado/creado en la nube: @{username}")
     except Error as e:
         print(f"❌ Error al inicializar usuario base {username}: {e}")
     finally:
@@ -68,10 +113,10 @@ def verificar_e_insertar_usuario_defecto(username, password_plano, nombre, rol):
             cursor.close()
             conexion.close()
 
-# Sincronizar usuarios base al arrancar la app de manera limpia
+# Ejecutar la creación de tablas primero, luego meter los usuarios
+inicializar_tablas_db()
 verificar_e_insertar_usuario_defecto('xrtegazz', 'JEAN2007', 'Jean Ortega', 'administrador')
 verificar_e_insertar_usuario_defecto('invitado_anonimo', 'invitado123', 'Invitado Base', 'invitado')
-
 # =========================================================================
 # 🧠 FUNCIONES DE PERSISTENCIA COMPLETAMENTE MIGRADAS A MYSQL
 # =========================================================================
