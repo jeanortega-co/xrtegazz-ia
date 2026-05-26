@@ -1,0 +1,312 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XRTEGAZZ IA</title>
+    <style>
+        body { margin: 0; min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: radial-gradient(circle at top, #2a0808 0%, #0d0d11 60%, #050507 100%); color: #f5f5f7; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .app { width: min(100%, 720px); background: rgba(13, 13, 15, 0.98); border: 1px solid rgba(255, 51, 51, 0.15); border-radius: 24px; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.85), 0 0 30px rgba(230, 0, 0, 0.05); overflow: hidden; position: relative; }
+        .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; background: linear-gradient(90deg, rgba(163, 0, 0, 0.12), rgba(0, 0, 0, 0.6)); border-bottom: 1px solid rgba(255, 51, 51, 0.18); }
+        .topbar-info { display: flex; align-items: center; gap: 14px; }
+        .avatar { width: 48px; height: 48px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #ff3333, #800000); display: grid; place-items: center; font-size: 20px; font-weight: 800; color: #ffffff; box-shadow: 0 0 15px rgba(230, 0, 0, 0.3); border: 1px solid #ff4d4d; }
+        .topbar h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.05em; font-weight: 800; color: #ffffff; }
+        .topbar p { margin: 4px 0 0; color: #cca3a3; opacity: 0.8; font-size: 0.85rem; }
+        .auth-trigger-btn { background: linear-gradient(135deg, #cc0000, #7a0000); border: 1px solid #ff3333; color: #ffffff; padding: 8px 16px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: all 0.2s ease; }
+        .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 7, 0.85); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 100; }
+        .modal-card { width: 85%; max-width: 450px; background: #0d0d0f; border: 1px solid rgba(255, 51, 51, 0.25); border-radius: 20px; padding: 24px; position: relative; }
+        .close-modal { position: absolute; top: 14px; right: 16px; background: transparent; border: none; color: #cca3a3; font-size: 1.3rem; cursor: pointer; }
+        .auth-tabs { display: flex; gap: 16px; border-bottom: 1px solid rgba(255, 51, 51, 0.15); margin-bottom: 18px; }
+        .auth-tab { background: transparent; border: none; color: #cca3a3; font-size: 1rem; font-weight: 700; padding: 8px 4px; cursor: pointer; }
+        .auth-tab.active { color: #ff4d4d; border-bottom: 2px solid #ff3333; }
+        .form-group { display: grid; gap: 5px; margin-bottom: 14px; }
+        .form-group input { background: #141417; border: 1px solid rgba(255, 51, 51, 0.18); padding: 10px 12px; border-radius: 10px; color: #ffffff; outline: none; }
+        .auth-btn { width: 100%; border: none; border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #cc0000, #7a0000); color: #ffffff; font-weight: 700; cursor: pointer; }
+        .chat { padding: 24px; display: flex; flex-direction: column; gap: 14px; height: 380px; overflow-y: auto; background: #070709; }
+        .message { padding: 12px 16px; border-radius: 16px; font-size: 0.93rem; max-width: 75%; }
+        .message.user { align-self: flex-end; background: rgba(255, 51, 51, 0.08); border: 1px solid rgba(255, 51, 51, 0.22); }
+        .message.assistant { align-self: flex-start; background: #121216; border: 1px solid rgba(255, 255, 255, 0.04); }
+        .input-area { padding: 18px 24px 24px; background: #0d0d0f; border-top: 1px solid rgba(255, 51, 51, 0.1); }
+        .input-area textarea { width: 100%; min-height: 64px; box-sizing: border-box; resize: none; border: 1px solid rgba(255, 51, 51, 0.18); border-radius: 14px; background: #141417; color: #ffffff; padding: 12px; outline: none; }
+        .input-area button { width: 100%; border: none; border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #cc0000, #7a0000); color: #ffffff; font-weight: 700; cursor: pointer; margin-top: 10px; }
+        .chip { padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.02); color: #ffcccc; border: 1px solid rgba(255, 51, 51, 0.12); cursor: pointer; font-size: 0.8rem; }
+        .hidden { display: none !important; }
+
+        /* 🤖 ESTILOS DE LA ANIMACIÓN DE ESCRITURA */
+        .typing-container { display: flex; align-items: center; gap: 5px; height: 20px; margin-top: 5px; }
+        .typing-container span { width: 7px; height: 7px; background: #ff3333; border-radius: 50%; display: inline-block; animation: bounce 1.3s infinite ease-in-out both; }
+        .typing-container span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-container span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <section class="app">
+        <div class="topbar">
+            <div class="topbar-info">
+                <div class="avatar">X</div>
+                <div>
+                    <h1>XRTEGAZZ IA</h1>
+                    <p id="topbar-subtitle">Tu asistente inteligente local operativo.</p>
+                </div>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button id="btn-admin-panel" class="auth-trigger-btn hidden" onclick="abrirAdminPanel()" style="background:#5e0000; border-color:#ff4d4d;">Admin</button>
+                <button id="btn-auth-trigger" class="auth-trigger-btn" onclick="abrirModal()">Iniciar Sesión</button>
+            </div>
+        </div>
+
+        <div id="modal-auth" class="modal-overlay hidden">
+            <div class="modal-card">
+                <button class="close-modal" onclick="cerrarModal()">×</button>
+                <div class="auth-tabs">
+                    <button id="tab-login" class="auth-tab active" onclick="cambiarTab('login')">Entrar</button>
+                    <button id="tab-registro" class="auth-tab" onclick="cambiarTab('registro')">Registrarse</button>
+                </div>
+                <div id="group-nombre" class="form-group hidden">
+                    <label>Nombre Completo</label>
+                    <input type="text" id="auth-nombre">
+                </div>
+                <div class="form-group">
+                    <label>Usuario</label>
+                    <input type="text" id="auth-usuario">
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="auth-password">
+                </div>
+                <p id="auth-feedback" class="auth-msg hidden"></p>
+                <button class="auth-btn" onclick="procesarAuth()" id="btn-submit-auth">Ingresar</button>
+            </div>
+        </div>
+
+        <div id="modal-admin" class="modal-overlay hidden">
+            <div class="modal-card" style="max-width: 600px;">
+                <button class="close-modal" onclick="cerrarAdminPanel()">×</button>
+                <h2>Panel Admin</h2>
+                <div style="display:flex; gap:10px; height:300px;">
+                    <div id="admin-lista-usuarios" style="width:30%; overflow-y:auto; border-right:1px solid #333;"></div>
+                    <div id="admin-visor-mensajes" style="width:70%; overflow-y:auto; background:#070709; padding:10px; border-radius:8px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat" id="chat">
+            <div class="message assistant" id="msg-bienvenida">
+                <small>XRTEGAZZ IA</small>
+                <div>Hola, soy XRTEGAZZ IA. Gestión local sin filtros.</div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <textarea id="mensaje" placeholder="Escribe tu orden..."></textarea>
+            <button onclick="enviarOrden()">Enviar</button>
+        </div>
+    </section>
+
+    <script>
+        let usuarioLogueado = null;
+        let modoActual = 'login';
+        
+        async function verificarAccesoAdmin() {
+            try {
+                const res = await fetch('/estado_sesion');
+                const data = await res.json();
+                if (data.is_admin) document.getElementById('btn-admin-panel').classList.remove('hidden');
+            } catch (e) {}
+        }
+
+        async function abrirAdminPanel() {
+            document.getElementById('modal-admin').classList.remove('hidden');
+            const listaBox = document.getElementById('admin-lista-usuarios');
+            const res = await fetch('/admin/usuarios');
+            const users = await res.json();
+            listaBox.innerHTML = '';
+            users.forEach(u => {
+                const btn = document.createElement('div');
+                btn.className = 'chip'; btn.style.marginBottom = '5px';
+                btn.innerText = u.usuario;
+                btn.onclick = () => verChatDeUsuario(u.usuario);
+                listaBox.appendChild(btn);
+            });
+        }
+
+        async function verChatDeUsuario(user) {
+            const visor = document.getElementById('admin-visor-mensajes');
+            const res = await fetch(`/admin/chat/${user}`);
+            const msjs = await res.json();
+            visor.innerHTML = msjs.map(m => `<div class="message ${m.remitente}" style="margin-bottom:5px;">${m.texto}</div>`).join('');
+        }
+
+        function cerrarAdminPanel() { document.getElementById('modal-admin').classList.add('hidden'); }
+        
+        function abrirModal() {
+            if (usuarioLogueado) { 
+                ejecutarLogout(); 
+            } else { 
+                document.getElementById('modal-auth').classList.remove('hidden'); 
+                cambiarTab('login'); 
+            }
+        }
+
+        function cerrarModal() { 
+            document.getElementById('modal-auth').classList.add('hidden'); 
+        }
+
+        function cambiarTab(modo) {
+            modoActual = modo;
+            document.getElementById('tab-login').classList.toggle('active', modo === 'login');
+            document.getElementById('tab-registro').classList.toggle('active', modo === 'registro');
+            document.getElementById('group-nombre').classList.toggle('hidden', modo === 'login');
+            document.getElementById('btn-submit-auth').innerText = modo === 'login' ? 'Ingresar' : 'Registrar Cuenta';
+        }
+
+        async function procesarAuth() {
+            const usuario = document.getElementById('auth-usuario').value.trim();
+            const password = document.getElementById('auth-password').value.trim();
+            const nombre = document.getElementById('auth-nombre').value.trim();
+
+            if (!usuario || !password || (modoActual === 'registro' && !nombre)) {
+                mostrarFeedback('Completa todos los campos.', 'error');
+                return;
+            }
+
+            const url = modoActual === 'login' ? '/login' : '/registrar';
+            const payload = modoActual === 'login' ? { usuario, password } : { usuario, password, nombre };
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (!res.ok) { mostrarFeedback(data.error, 'error'); return; }
+
+                if (modoActual === 'login') {
+                    establecerUsuarioUI(data.nombre);
+                    cerrarModal();
+                } else {
+                    mostrarFeedback('¡Cuenta creada! Cambiando a ingreso...', 'success');
+                    setTimeout(() => cambiarTab('login'), 1200);
+                }
+            } catch (e) { mostrarFeedback('Error al conectar con el backend.', 'error'); }
+        }
+
+        function mostrarFeedback(msg, tipo) {
+            const f = document.getElementById('auth-feedback');
+            f.innerText = msg;
+            f.className = `auth-msg ${tipo}`;
+            f.classList.remove('hidden');
+        }
+
+        async function establecerUsuarioUI(nombre) {
+            usuarioLogueado = nombre;
+            document.getElementById('btn-auth-trigger').innerText = `Salir (${nombre})`;
+            document.getElementById('topbar-subtitle').innerText = `Sesión autorizada de: ${nombre}`;
+            document.getElementById('msg-bienvenida').innerHTML = `<small>XRTEGAZZ IA</small><div>¡Un placer verte de nuevo, <strong>${nombre}</strong>! Tu historial y configuraciones locales están listos. ¿Qué orden ejecutamos hoy?</div>`;
+            cargarHistorialServidor();
+        }
+
+        async function cargarHistorialServidor() {
+            try {
+                const res = await fetch('/historial');
+                const mensajes = await res.json();
+                const chatBox = document.getElementById('chat');
+                
+                chatBox.innerHTML = `<div class="message assistant" id="msg-bienvenida"><small>XRTEGAZZ IA</small><div>Historial recuperado con éxito.</div></div>`;
+                mensajes.forEach(msg => { añadirMensaje(msg.texto, msg.remitente, false); });
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } catch (e) { console.error("Error trayendo el historial"); }
+        }
+
+        async function ejecutarLogout() {
+            await fetch('/logout', { method: 'POST' });
+            usuarioLogueado = null;
+            location.reload();
+        }
+
+        function formatearTexto(texto) {
+            return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+        }
+
+        function añadirMensaje(texto, tipo, hacerScroll = true) {
+            const chat = document.getElementById('chat');
+            const mensaje = document.createElement('div');
+            mensaje.className = `message ${tipo}`;
+            const contenido = tipo === 'assistant' ? formatearTexto(texto) : texto;
+            mensaje.innerHTML = `<small>${tipo === 'user' ? 'Tú' : 'XRTEGAZZ IA'}</small><div>${contenido}</div>`;
+            chat.appendChild(mensaje);
+            if (hacerScroll) chat.scrollTop = chat.scrollHeight;
+        }
+
+        function ponerEjemplo(t) { document.getElementById('mensaje').value = t; document.getElementById('mensaje').focus(); }
+
+        async function enviarOrden() {
+            const input = document.getElementById('mensaje');
+            const texto = input.value.trim();
+            if (!texto) return;
+
+            añadirMensaje(texto, 'user');
+            input.value = '';
+
+            const chat = document.getElementById('chat');
+            const indicador = document.createElement('div');
+            indicador.className = 'message assistant';
+            indicador.id = 'typing-indicator';
+            indicador.innerHTML = `<small>XRTEGAZZ IA</small><div class="typing-container"><span></span><span></span><span></span></div>`;
+            chat.appendChild(indicador);
+            chat.scrollTop = chat.scrollHeight;
+
+            try {
+                const response = await fetch('/asistente', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comando: texto })    
+                });
+                const data = await response.json();
+                
+                const currentIndicator = document.getElementById('typing-indicator');
+                if (currentIndicator) currentIndicator.remove();
+
+                añadirMensaje(data.respuesta, 'assistant');
+                if (data.url) window.open(data.url, '_blank');
+            } catch (error) {
+                const currentIndicator = document.getElementById('typing-indicator');
+                if (currentIndicator) currentIndicator.remove();
+                añadirMensaje('Servidor ocupado. Intenta de nuevo en unos segundos.', 'assistant');
+            }
+        }
+
+        // ⌨️ ESCUCHADOR PARA ENVIAR CON ENTER Y HACER SALTO DE LÍNEA CON SHIFT + ENTER
+        document.getElementById('mensaje').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault(); // Evita el salto de línea por defecto
+                enviarOrden();
+            }
+        });
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            try {
+                const res = await fetch('/estado_sesion');
+                const data = await res.json();
+                if (data.logeado) {
+                    establecerUsuarioUI(data.nombre);
+                    if (data.is_admin) {
+                        document.getElementById('btn-admin-panel').classList.remove('hidden');
+                    }
+                }
+            } catch (e) { 
+                console.error("Error al cargar estado de sesión:", e); 
+            }
+        });
+    </script>
+</body>
+</html>

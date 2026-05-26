@@ -1,0 +1,11 @@
+# Ocultar credenciales y configuración local
+.env
+
+# Ignorar archivos antiguos de base de datos local en formato JSON
+*.json
+historial_chats/
+
+# Archivos basura y temporales de Python
+__pycache__/
+*.pyc
+.vscode/
