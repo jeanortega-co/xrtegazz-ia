@@ -26,22 +26,24 @@ DB_CONFIG = {
 }
 
 def obtener_conexion_db():
-    """Establece una conexión segura con Aiven, ignorando la verificación estricta del certificado."""
+    """Establece una conexión segura con Aiven, ignorando la verificación de certificado local."""
     try:
-        config = {
-            'host': os.environ.get("DB_HOST"),
-            'user': os.environ.get("DB_USER"),
-            'password': os.environ.get("DB_PASSWORD"),
-            'database': os.environ.get("DB_NAME"),
-            'port': int(os.environ.get("DB_PORT", 23014)),
-            'ssl_disabled': False,             # Esto habilita SSL
-            'ssl_verify_identity': False,      # Esto evita el error de certificado inválido
-            'ssl_verify_cert': False           # Esto permite conectar sin el archivo local ca.pem
-        }
-        conexion = mysql.connector.connect(**config)
+        # Usamos 23014 como puerto base si DB_PORT no está definido
+        port_db = int(os.environ.get("DB_PORT", 23014))
+        
+        conexion = mysql.connector.connect(
+            host=os.environ.get("DB_HOST"),
+            user=os.environ.get("DB_USER"),
+            password=os.environ.get("DB_PASSWORD"),
+            database=os.environ.get("DB_NAME"),
+            port=port_db,
+            ssl_disabled=False,          # Aiven requiere SSL
+            ssl_verify_identity=False,   # Ignora verificación de identidad del servidor
+            ssl_verify_cert=False        # Ignora la necesidad de archivo ca.pem local
+        )
         return conexion
-    except Error as e:
-        print(f"❌ Error al conectar a MySQL: {e}")
+    except Exception as e:
+        print(f"❌ Error crítico al conectar a MySQL: {e}")
         return None
 def inicializar_tablas_db():
     """Crea las tablas automáticamente en la nube si no existen."""
