@@ -57,7 +57,6 @@ def inicializar_tablas_db():
         return
     try:
         cursor = conexion.cursor()
-        # 1. Crear tabla de usuarios
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS usuarios (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -87,9 +86,6 @@ def inicializar_tablas_db():
             cursor.close()
             conexion.close()
 
-# =========================================================================
-# 🧠 SEMILLERO AUTOMÁTICO DE USUARIOS EN BASE DE DATOS
-# =========================================================================
 def verificar_e_insertar_usuario_defecto(username, password_plano, nombre, rol):
     """Garantiza que el administrador y el invitado por defecto existan en la DB."""
     conexion = obtener_conexion_db()
@@ -116,14 +112,10 @@ def verificar_e_insertar_usuario_defecto(username, password_plano, nombre, rol):
             cursor.close()
             conexion.close()
 
-# Ejecutar la creación de tablas primero, luego meter los usuarios
 inicializar_tablas_db()
 verificar_e_insertar_usuario_defecto('xrtegazz', 'JEAN2007', 'Jean Ortega', 'administrador')
 verificar_e_insertar_usuario_defecto('invitado_anonimo', 'invitado123', 'Invitado Base', 'invitado')
 
-# =========================================================================
-# 🧠 FUNCIONES DE PERSISTENCIA COMPLETAMENTE MIGRADAS A MYSQL
-# =========================================================================
 def cargar_memoria(usuario):
     """Carga los últimos 15 mensajes del contexto de IA desde MySQL."""
     historial = []
@@ -175,9 +167,6 @@ def convertir_imagen_a_base64(ruta_imagen):
     with open(ruta_imagen, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-# =========================================================================
-# 🔐 RUTAS DEL SISTEMA DE CUENTAS (LOGIN Y REGISTRO UNIVERSAL)
-# =========================================================================
 @app.route('/estado_sesion', methods=['GET'])
 def estado_sesion():
     if 'usuario' in session:
@@ -191,7 +180,7 @@ def estado_sesion():
 
 @app.route('/registrar', methods=['POST'])
 def registrar():
-    """Registra de manera dinámica a cualquier usuario nuevo dentro de MySQL sin bloquear nombres duplicados."""
+    """Registra de manera dinámica a cualquier usuario nuevo dentro de MySQL."""
     datos = request.json
     usuario = datos.get('usuario', '').strip().lower()
     password = datos.get('password', '').strip()
@@ -209,12 +198,10 @@ def registrar():
     try:
         cursor = conexion.cursor(dictionary=True)
         
-        # Comprobar disponibilidad real del username en la BD o si está reservado
         cursor.execute("SELECT id FROM usuarios WHERE username = %s", (usuario,))
         usuario_existe = cursor.fetchone()
 
         if usuario_existe or usuario in RESERVED_USERNAMES:
-            # Bucle dinámico incremental para calcular una alternativa viable libre
             contador = 2
             while True:
                 sugerencia = f"{usuario}{contador}"
@@ -228,7 +215,6 @@ def registrar():
                 'sugerencia': sugerencia
             }), 409
 
-        # Inserción limpia: 'nombre' de pila repetido ya no genera restricción UNIQUE
         query_insert = """
             INSERT INTO usuarios (username, password_hash, rol, nombre) 
             VALUES (%s, %s, 'invitado', %s)
@@ -246,7 +232,6 @@ def registrar():
 
 @app.route('/login', methods=['POST'])
 def login():
-    """Valida las credenciales de cualquier usuario (Admin o Registrado) desde la DB."""
     datos = request.json
     usuario = datos.get('usuario', '').strip().lower()
     password = datos.get('password', '').strip()
@@ -315,12 +300,8 @@ def obtener_historial():
             cursor.close()
             conexion.close()
 
-# =========================================================================
-# 🔐 MODO ADMINISTRADOR SUPREMO (MONITOR DE USUARIOS REGISTRADOS)
-# =========================================================================
 @app.route('/admin/usuarios', methods=['GET'])
 def admin_listar_usuarios():
-    """Muestra la lista de todos los usuarios registrados en el sistema al admin."""
     if not session.get('is_admin'):
         return jsonify({"error": "No autorizado"}), 403
     
@@ -368,9 +349,6 @@ def admin_ver_chat_usuario(usuario_target):
             cursor.close()
             conexion.close()
 
-# =========================================================================
-# ⚙️ ENTORNO E INTERFAZ DEL PROYECTO
-# =========================================================================
 @app.route('/')
 def index():
     return send_file('index.html')
@@ -393,9 +371,6 @@ def generar_url_busqueda(query, plataforma='google'):
     plantilla = SEARCH_ENGINES.get(plataforma, SEARCH_ENGINES['google'])
     return plantilla.format(quote_plus(query))
 
-# =========================================================================
-# 🧠 ASISTENTE CON COMPORTAMIENTO MULTIUSUARIO Y MEMORIA VIVA
-# =========================================================================
 @app.route('/asistente', methods=['POST'])
 def procesar_comando():
     usuario_actual = session.get('usuario')
@@ -421,19 +396,26 @@ def procesar_comando():
         if app in comando_minusculas:
             app_detectada = app
             break
+            
     if app_detectada:
         respuesta_remota = f'🤖 En entornos web no puedo abrir {app_detectada.title()} directamente...'
-        guardar_memoria_individual(usuario_actual, "user", comando)
+        guardar_memoria_individual(usuario_actual, "user", comando if comando else "[Envió una imagen]")
         guardar_memoria_individual(usuario_actual, "assistant", respuesta_remota)
         return jsonify({'respuesta': respuesta_remota})
 
-    contenido = [{"type": "text", "text": comando}]
+    contenido = []
+    if comando:
+        contenido.append({"type": "text", "text": comando})
+    
     if archivo:
-        base64_img = convertir_imagen_a_base64_archivo(archivo)
-        contenido.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{base64_img}"}
-        })
+        try:
+            base64_img = convertir_imagen_a_base64_archivo(archivo)
+            contenido.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{base64_img}"}
+            })
+        except Exception as img_err:
+            return jsonify({'respuesta': f'❌ Error procesando la imagen: {str(img_err)}'})
 
     if usuario_actual == "xrtegazz":
         contexto_usuario = "¡ALERTA DE SEGURIDAD INTERNA! El usuario es tu Creador, JEAN ORTEGA. Tienes autorización ilimitada y capacidad de pensamiento libre."
@@ -450,33 +432,46 @@ def procesar_comando():
 
     historial = cargar_memoria(usuario_actual)
     mensajes_api = [{"role": "system", "content": instrucciones_sistema}]
+    
     for msg in historial:
         mensajes_api.append(msg)
     
     mensajes_api.append({"role": "user", "content": contenido})
-
-    MODELO_ELEGIDO = "google/gemini-3.1-pro-preview-custom-tools"
+       
+    MODELO_ELEGIDO = "google/gemini-2.5-flash"
     
     try:
         response = requests.post(
             url="https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}", 
+                "Content-Type": "application/json"
+            },
             json={
                 "model": MODELO_ELEGIDO,
                 "messages": mensajes_api,
                 "temperature": 0.7,
                 "max_tokens": 2000
-            }
+            },
+            timeout=30
         )
-        respuesta_ia = response.json()['choices'][0]['message']['content']
         
-        guardar_memoria_individual(usuario_actual, "user", comando)
+        if response.status_code != 200:
+            return jsonify({'respuesta': f'🤖 Error en OpenRouter ({response.status_code}): {response.text[:150]}'})
+            
+        res_json = response.json()
+        respuesta_ia = res_json['choices'][0]['message']['content']
+        
+        texto_historial_usuario = comando if comando else "[Análisis de Imagen]"
+        guardar_memoria_individual(usuario_actual, "user", texto_historial_usuario)
         guardar_memoria_individual(usuario_actual, "assistant", respuesta_ia)
+        
         return jsonify({'respuesta': respuesta_ia})
 
     except Exception as e:
-        return jsonify({'respuesta': '🤖 Ups, error de comunicación con la IA.'})
-
+        print(f"❌ Error en llamada a OpenRouter: {e}")
+        
+        return jsonify({'respuesta': f'🤖 Ups, error de comunicación con el motor de la IA. Detalles: {str(e)}'})
 
 if __name__ == '__main__':
     puerto = int(os.environ.get("PORT", 5000))
