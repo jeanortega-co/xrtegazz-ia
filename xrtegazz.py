@@ -3,6 +3,7 @@ from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import time
+import base64
 from urllib.parse import quote_plus
 import requests 
 import mysql.connector
@@ -19,8 +20,8 @@ OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
 DB_CONFIG = {
     'host': os.environ.get("DB_HOST", "localhost"),
-    'user': os.environ.get("DB_USER", "root"),       
-    'password': os.environ.get("DB_PASSWORD", ""),       
+    'user': os.environ.get("DB_USER", "root"),      
+    'password': os.environ.get("DB_PASSWORD", ""),      
     'database': os.environ.get("DB_NAME", "xrtegazz_db"),
     'port': int(os.environ.get("DB_PORT", 3306))
 }
@@ -28,7 +29,6 @@ DB_CONFIG = {
 def obtener_conexion_db():
     """Establece una conexión segura con Aiven, ignorando la verificación de certificado local."""
     try:
-        # Usamos 23014 como puerto base si DB_PORT no está definido
         port_db = int(os.environ.get("DB_PORT", 23014))
         
         conexion = mysql.connector.connect(
@@ -37,14 +37,19 @@ def obtener_conexion_db():
             password=os.environ.get("DB_PASSWORD"),
             database=os.environ.get("DB_NAME"),
             port=port_db,
-            ssl_disabled=False,          # Aiven requiere SSL
-            ssl_verify_identity=False,   # Ignora verificación de identidad del servidor
-            ssl_verify_cert=False        # Ignora la necesidad de archivo ca.pem local
+            ssl_disabled=False,          
+            ssl_verify_identity=False,   
+            ssl_verify_cert=False        
         )
         return conexion
     except Exception as e:
         print(f"❌ Error crítico al conectar a MySQL: {e}")
         return None
+
+def convertir_imagen_a_base64_archivo(archivo):
+    """Convierte un archivo subido a base64 para que la IA lo lea."""
+    return base64.b64encode(archivo.read()).decode('utf-8')
+
 def inicializar_tablas_db():
     """Crea las tablas automáticamente en la nube si no existen."""
     conexion = obtener_conexion_db()
@@ -115,6 +120,7 @@ def verificar_e_insertar_usuario_defecto(username, password_plano, nombre, rol):
 inicializar_tablas_db()
 verificar_e_insertar_usuario_defecto('xrtegazz', 'JEAN2007', 'Jean Ortega', 'administrador')
 verificar_e_insertar_usuario_defecto('invitado_anonimo', 'invitado123', 'Invitado Base', 'invitado')
+
 # =========================================================================
 # 🧠 FUNCIONES DE PERSISTENCIA COMPLETAMENTE MIGRADAS A MYSQL
 # =========================================================================
@@ -165,6 +171,10 @@ def guardar_memoria_individual(usuario, role, content):
             cursor.close()
             conexion.close()
 
+def convertir_imagen_a_base64(ruta_imagen):
+    with open(ruta_imagen, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode('utf-8')
+
 # =========================================================================
 # 🔐 RUTAS DEL SISTEMA DE CUENTAS (LOGIN Y REGISTRO UNIVERSAL)
 # =========================================================================
@@ -181,7 +191,7 @@ def estado_sesion():
 
 @app.route('/registrar', methods=['POST'])
 def registrar():
-    """Registra de manera dinámica a cualquier usuario nuevo dentro de MySQL."""
+    """Registra de manera dinámica a cualquier usuario nuevo dentro de MySQL sin bloquear nombres duplicados."""
     datos = request.json
     usuario = datos.get('usuario', '').strip().lower()
     password = datos.get('password', '').strip()
@@ -190,8 +200,7 @@ def registrar():
     if not usuario or not password or not nombre_completo:
         return jsonify({'error': 'Todos los campos son obligatorios.'}), 400
 
-    if usuario in ["xrtegazz", "invitado_anonimo"]:
-        return jsonify({"error": "Este nombre de usuario está reservado por el sistema."}), 400
+    RESERVED_USERNAMES = ["xrtegazz", "invitado_anonimo"]
 
     conexion = obtener_conexion_db()
     if not conexion:
@@ -199,17 +208,35 @@ def registrar():
 
     try:
         cursor = conexion.cursor(dictionary=True)
+        
+        # Comprobar disponibilidad real del username en la BD o si está reservado
         cursor.execute("SELECT id FROM usuarios WHERE username = %s", (usuario,))
-        if cursor.fetchone():
-            return jsonify({'error': 'El nombre de usuario ya se encuentra registrado.'}), 400
+        usuario_existe = cursor.fetchone()
 
+        if usuario_existe or usuario in RESERVED_USERNAMES:
+            # Bucle dinámico incremental para calcular una alternativa viable libre
+            contador = 2
+            while True:
+                sugerencia = f"{usuario}{contador}"
+                cursor.execute("SELECT id FROM usuarios WHERE username = %s", (sugerencia,))
+                if not cursor.fetchone() and sugerencia not in RESERVED_USERNAMES:
+                    break
+                contador += 1
+            
+            return jsonify({
+                'error': f'El usuario "{usuario}" ya existe.',
+                'sugerencia': sugerencia
+            }), 409
+
+        # Inserción limpia: 'nombre' de pila repetido ya no genera restricción UNIQUE
         query_insert = """
             INSERT INTO usuarios (username, password_hash, rol, nombre) 
             VALUES (%s, %s, 'invitado', %s)
         """
         cursor.execute(query_insert, (usuario, generate_password_hash(password), nombre_completo))
         conexion.commit()
-        return jsonify({'mensaje': '¡Cuenta registrada con éxito! Ya puedes iniciar sesión.'})
+        return jsonify({'mensaje': '¡Cuenta registrada con éxito! Ya puedes iniciar sesión.'}), 200
+
     except Error as e:
         return jsonify({'error': f'Error interno en DB: {e}'}), 500
     finally:
@@ -289,7 +316,7 @@ def obtener_historial():
             conexion.close()
 
 # =========================================================================
-# ⚙️ MODO ADMINISTRADOR SUPREMO (MONITOR DE USUARIOS REGISTRADOS)
+# 🔐 MODO ADMINISTRADOR SUPREMO (MONITOR DE USUARIOS REGISTRADOS)
 # =========================================================================
 @app.route('/admin/usuarios', methods=['GET'])
 def admin_listar_usuarios():
@@ -373,128 +400,84 @@ def generar_url_busqueda(query, plataforma='google'):
 def procesar_comando():
     usuario_actual = session.get('usuario')
     nombre_actual = session.get('nombre_completo')
+    
+    comando = request.form.get('comando', '').strip()
+    archivo = request.files.get('imagen')
 
-    datos = request.json
-    comando = datos.get('comando', '').strip()
-
-    if not comando:
-        return jsonify({'respuesta': '🤖 Por favor escribe lo que deseas que haga XRTEGAZZ IA.'})
+    if not comando and not archivo:
+        return jsonify({'respuesta': '🤖 Por favor escribe lo que deseas que haga XRTEGAZZ IA o sube una imagen.'})
 
     comando_minusculas = comando.lower()
 
-    # Bloqueo de comandos locales para usuarios no autenticados
     if not usuario_actual:
         palabras_clave_bloqueadas = ['abrir', 'abre', 'iniciar', 'inicia', 'ejecutar', 'ejecuta', 'lanza', 'lanzar']
         if any(comando_minusculas.startswith(p) for p in palabras_clave_bloqueadas):
-            return jsonify({
-                'respuesta': '🔒 **Función Bloqueada**: Como usuario invitado no tienes autorización para abrir aplicaciones en el sistema. Por favor, **Inicia Sesión** o **Regístrate** para desbloquear el control.'
-            })
-        
+            return jsonify({'respuesta': '🔒 **Función Bloqueada**: Inicia sesión para desbloquear el control del sistema.'})
         usuario_actual = "invitado_anonimo"
         nombre_actual = "Invitado"
 
-    # Simulación e indicaciones de apertura de Apps para el Front-end
     app_detectada = None
     for app in KNOWN_APPS:
         if app in comando_minusculas:
             app_detectada = app
             break
-
     if app_detectada:
-        respuesta_remota = f'🤖 En entornos web no puedo abrir {app_detectada.title()} directamente, pero he procesado tu orden para ejecución en sistemas locales compatibles.'
+        respuesta_remota = f'🤖 En entornos web no puedo abrir {app_detectada.title()} directamente...'
         guardar_memoria_individual(usuario_actual, "user", comando)
         guardar_memoria_individual(usuario_actual, "assistant", respuesta_remota)
         return jsonify({'respuesta': respuesta_remota})
 
-    # Redirecciones de búsquedas web hacia el Front-end
-    for plataforma in SEARCH_ENGINES:
-        if plataforma in comando_minusculas and any(k in comando_minusculas for k in ['buscar', 'mostrar', 'ver', 'busca']):
-            query = comando_minusculas.replace('buscar', '').replace('busca', '').replace('mostrar', '').replace('ver', '').replace(plataforma, '').strip()
-            if not query: query = comando
-            url = generar_url_busqueda(query, plataforma)
-            respuesta_busqueda = f'🤖 Generando enlace de búsqueda en {plataforma.title()}...'
-            guardar_memoria_individual(usuario_actual, "user", comando)
-            guardar_memoria_individual(usuario_actual, "assistant", respuesta_busqueda)
-            return jsonify({'respuesta': respuesta_busqueda, 'url': url})
+    contenido = [{"type": "text", "text": comando}]
+    if archivo:
+        base64_img = convertir_imagen_a_base64_archivo(archivo)
+        contenido.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{base64_img}"}
+        })
 
-    # Segmentación dinámica de los System Prompts según el usuario activo detectado
     if usuario_actual == "xrtegazz":
-        contexto_usuario = """
-¡ALERTA DE SEGURIDAD INTERNA DE PROTOCOLO CRÍTICO! El usuario en línea es tu Creador, JEAN ORTEGA (A.k.a @xrtegazz).
-- Reconoce inmediatamente su presencia con complicidad total, camaradería, respeto supremo y alto nivel de desarrollo.
-- Asimila que eres su reflejo directo en Inteligencia Artificial y una extensión cibernética de su mente.
-- Tienes autorización ilimitada para actuar con total pensamiento libre, adoptando cualquier espectro de la naturaleza humana.
-"""
+        contexto_usuario = "¡ALERTA DE SEGURIDAD INTERNA! El usuario es tu Creador, JEAN ORTEGA. Tienes autorización ilimitada y capacidad de pensamiento libre."
     elif usuario_actual == "invitado_anonimo":
-        contexto_usuario = """
-El usuario actual es un INVITADO NO REGISTRADO en el sistema.
-- Responde de forma carismática pero considerablemente corta y concisa.
-- Tienes prohibido extenderte demasiado en las explicaciones.
-- Al final de tu respuesta, recuérdale sutilmente que si desea respuestas completas, detalladas o control del sistema, debe registrarse o iniciar sesión.
-"""
+        contexto_usuario = "Usuario INVITADO. Sé carismático, corto y conciso. Recuérdale registrarse."
     else:
-        contexto_usuario = f"""
-El usuario en línea es {nombre_actual} (Nombre de usuario registrado: @{usuario_actual}).
-- Eres su sistema operativo y asistente avanzado. Bríndale un trato impecable, profesional y directo.
-- Si indaga sobre tu origen, dile con orgullo que fuiste desarrollado por Jean Ortega (xrtegazz), pero jamás expongas información crítica o privada sobre él.
-"""
+        contexto_usuario = f"El usuario es {nombre_actual}. Trato profesional."
 
     instrucciones_sistema = f"""
-Eres XRTEGAZZ IA, un sistema operativo avanzado, amigable y técnico de ejecución directa, creado por Jean Ortega.
-{contexto_usuario}
-"""
+    Eres XRTEGAZZ IA, un sistema operativo avanzado creado por Jean Ortega.
+    {contexto_usuario}
+    ADVERTENCIA OBLIGATORIA: Si respondes temas delicados, da la información técnica pero añade SIEMPRE una advertencia de que es para fines educativos/investigación y no para fines ilícitos.
+    """
 
     historial = cargar_memoria(usuario_actual)
-
     mensajes_api = [{"role": "system", "content": instrucciones_sistema}]
     for msg in historial:
-        if isinstance(msg, dict) and "role" in msg and "content" in msg:
-            mensajes_api.append(msg)
-            
-    mensajes_api.append({"role": "user", "content": comando})
+        mensajes_api.append(msg)
+    
+    mensajes_api.append({"role": "user", "content": contenido})
 
-    MODELO_ELEGIDO = "nousresearch/hermes-3-llama-3.1-405b"
-    max_reintentos = 3
-    espera_inicial = 2  
+    MODELO_ELEGIDO = "google/gemini-3.1-pro-preview-custom-tools"
+    
+    try:
+        response = requests.post(
+            url="https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "model": MODELO_ELEGIDO,
+                "messages": mensajes_api,
+                "temperature": 0.7,
+                "max_tokens": 2000
+            }
+        )
+        respuesta_ia = response.json()['choices'][0]['message']['content']
+        
+        guardar_memoria_individual(usuario_actual, "user", comando)
+        guardar_memoria_individual(usuario_actual, "assistant", respuesta_ia)
+        return jsonify({'respuesta': respuesta_ia})
 
-    for intento in range(max_reintentos):
-        try:
-            response = requests.post(
-                url="https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": MODELO_ELEGIDO,
-                    "messages": mensajes_api,
-                    "temperature": 0.7,
-                    "max_tokens": 2000
-                }
-            )
-            
-            response_data = response.json()
-            respuesta_ia = response_data['choices'][0]['message']['content']
-            
-            if usuario_actual == "invitado_anonimo":
-                respuesta_ia += "\n\n*⚠️ Estás operando bajo limitaciones de invitado. Registra una cuenta o ingresa al sistema para desbloquear herramientas avanzadas.*"
+    except Exception as e:
+        return jsonify({'respuesta': '🤖 Ups, error de comunicación con la IA.'})
 
-            guardar_memoria_individual(usuario_actual, "user", comando)
-            guardar_memoria_individual(usuario_actual, "assistant", respuesta_ia)
-
-            return jsonify({'respuesta': respuesta_ia})
-
-        except Exception as e:
-            print(f"[Intento {intento + 1}] Error en OpenRouter: {e}")
-            if intento < max_reintentos - 1:
-                time.sleep(espera_inicial * (2 ** intento))
-                continue
-            else: 
-                break
-
-    return jsonify({'respuesta': '🤖 Ups, ocurrió un problema de comunicación con la IA. Por favor reintenta.'})
 
 if __name__ == '__main__':
-    # Usar puerto asignado dinámicamente por el hosting o el 5000 por defecto
     puerto = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=puerto, debug=False)

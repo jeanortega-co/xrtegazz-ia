@@ -6,15 +6,14 @@
     <title>XRTEGAZZ IA</title>
     <style>
         html {
-            background: #050507; /* Color sólido base para evitar parpadeos blancos */
-            overscroll-behavior: none; /* 🚫 Evita el efecto rebote de papel en navegadores modernos */
+            background: #050507; 
+            overscroll-behavior: none; 
             height: 100%;
         }
         body { 
             margin: 0; 
             height: 100%;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            /* Fijamos el degradado de fondo para que no se mueva al scrollear */
             background: radial-gradient(circle at top, #2a0808 0%, #0d0d11 60%, #050507 100%) no-repeat center center fixed; 
             background-size: cover;
             color: #f5f5f7; 
@@ -23,7 +22,7 @@
             align-items: center; 
             padding: 20px; 
             box-sizing: border-box; 
-            overscroll-behavior-y: none; /* Bloqueo extra para iOS */
+            overscroll-behavior-y: none; 
         }
         .app { width: min(100%, 720px); background: rgba(13, 13, 15, 0.98); border: 1px solid rgba(255, 51, 51, 0.15); border-radius: 24px; box-shadow: 0 30px 90px rgba(0, 0, 0, 0.85), 0 0 30px rgba(230, 0, 0, 0.05); overflow: hidden; position: relative; display: flex; flex-direction: column; }
         .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 24px; background: linear-gradient(90deg, rgba(163, 0, 0, 0.12), rgba(0, 0, 0, 0.6)); border-bottom: 1px solid rgba(255, 51, 51, 0.18); flex-shrink: 0; }
@@ -47,11 +46,17 @@
         .message.assistant { align-self: flex-start; background: #121216; border: 1px solid rgba(255, 255, 255, 0.04); }
         .input-area { padding: 18px 24px 24px; background: #0d0d0f; border-top: 1px solid rgba(255, 51, 51, 0.1); flex-shrink: 0; }
         .input-area textarea { width: 100%; min-height: 50px; max-height: 120px; box-sizing: border-box; resize: none; border: 1px solid rgba(255, 51, 51, 0.18); border-radius: 14px; background: #141417; color: #ffffff; padding: 12px; outline: none; font-size: 1rem; }
-        .input-area button { width: 100%; border: none; border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #cc0000, #7a0000); color: #ffffff; font-weight: 700; cursor: pointer; margin-top: 10px; font-size: 1rem; }
+        
+        .action-buttons { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-send { flex-grow: 1; border: none; border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #cc0000, #7a0000); color: #ffffff; font-weight: 700; cursor: pointer; font-size: 1rem; }
+        .btn-attach { width: 50px; border: 1px solid rgba(255, 51, 51, 0.3); border-radius: 12px; padding: 12px; background: #141417; color: #ffffff; font-size: 1.1rem; cursor: pointer; display: grid; place-items: center; transition: background 0.2s; }
+        .btn-attach:hover { background: #1c1c21; }
+        .preview-box { margin-top: 8px; font-size: 0.85rem; color: #ff6666; display: flex; align-items: center; gap: 8px; }
+        .preview-box span { background: rgba(255,51,51,0.15); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,51,51,0.3); }
+
         .chip { padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.02); color: #ffcccc; border: 1px solid rgba(255, 51, 51, 0.12); cursor: pointer; font-size: 0.8rem; }
         .hidden { display: none !important; }
 
-        /* 🤖 ANIMACIÓN DE ESCRITURA */
         .typing-container { display: flex; align-items: center; gap: 5px; height: 20px; margin-top: 5px; }
         .typing-container span { width: 7px; height: 7px; background: #ff3333; border-radius: 50%; display: inline-block; animation: bounce 1.3s infinite ease-in-out both; }
         .typing-container span:nth-child(1) { animation-delay: -0.32s; }
@@ -61,7 +66,6 @@
             40% { transform: scale(1); opacity: 1; }
         }
 
-        /* 📱 MEDIA QUERIES PARA DISPOSITIVOS MÓVILES */
         @media (max-width: 600px) {
             body { padding: 0; background: #050507; }
             .app { width: 100vw; height: 100vh; height: -webkit-fill-available; border: none; border-radius: 0; }
@@ -137,20 +141,56 @@
         <div class="chat" id="chat">
             <div class="message assistant" id="msg-bienvenida">
                 <small>XRTEGAZZ IA</small>
-                <div>Hola, soy XRTEGAZZ IA. Gestión local sin filtros.</div>
+                <div>Hola, soy XRTEGAZZ IA. Gestión local sin filtros con motor multimodal inteligente.</div>
             </div>
         </div>
 
         <div class="input-area">
-            <textarea id="mensaje" placeholder="Escribe tu orden..."></textarea>
-            <button onclick="enviarOrden()">Enviar</button>
+            <input type="file" id="input-archivo" accept="image/*" class="hidden" onchange="actualizarVistaPreviaArchivo()">
+            
+            <textarea id="mensaje" placeholder="Escribe tu orden o consulta sobre una imagen..."></textarea>
+            
+            <div class="action-buttons">
+                <button class="btn-attach" title="Adjuntar Imagen" onclick="document.getElementById('input-archivo').click()">📎</button>
+                <button class="btn-send" onclick="enviarOrden()">Enviar</button>
+            </div>
+            
+            <div id="preview-archivo" class="preview-box hidden"></div>
         </div>
     </section>
 
     <script>
         let usuarioLogueado = null;
         let modoActual = 'login';
+        let archivoSeleccionado = null;
         
+if (!res.ok) { 
+    if (res.status === 409 && data.sugerencia) {
+        mostrarFeedback(`${data.error} ¿Qué tal usar: ${data.sugerencia}?`, 'error');
+        document.getElementById('auth-usuario').value = data.sugerencia; 
+    } else {
+        mostrarFeedback(data.error, 'error'); 
+    }
+    return; 
+}
+        
+        function actualizarVistaPreviaArchivo() {
+            const input = document.getElementById('input-archivo');
+            const previewBox = document.getElementById('preview-archivo');
+            
+            if (input.files && input.files[0]) {
+                archivoSeleccionado = input.files[0];
+                previewBox.innerHTML = `Adjunto: <span>${archivoSeleccionado.name}</span> <b style="cursor:pointer;margin-left:5px;" onclick="cancelarArchivo()">×</b>`;
+                previewBox.classList.remove('hidden');
+            }
+        }
+
+        function cancelarArchivo() {
+            archivoSeleccionado = null;
+            document.getElementById('input-archivo').value = '';
+            document.getElementById('preview-archivo').classList.add('hidden');
+        }
+
         async function verificarAccesoAdmin() {
             try {
                 const res = await fetch('/estado_sesion');
@@ -168,8 +208,8 @@
             users.forEach(u => {
                 const btn = document.createElement('div');
                 btn.className = 'chip'; btn.style.marginBottom = '5px';
-                btn.innerText = u.usuario;
-                btn.onclick = () => verChatDeUsuario(u.usuario);
+                btn.innerText = u.username;
+                btn.onclick = () => verChatDeUsuario(u.username);
                 listaBox.appendChild(btn);
             });
         }
@@ -252,7 +292,7 @@
                 document.getElementById('topbar-subtitle').innerText = `Sesión autorizada de: ${nombre}`;
             }
             
-            document.getElementById('msg-bienvenida').innerHTML = `<small>XRTEGAZZ IA</small><div>¡Un placer verte de nuevo, <strong>${nombre}</strong>! Tu historial y configuraciones locales están listos. ¿Qué orden ejecutamos hoy?</div>`;
+            document.getElementById('msg-bienvenida').innerHTML = `<small>XRTEGAZZ IA</small><div>¡Un placer verte de nuevo, <strong>${nombre}</strong>! Tu historial y funciones multimodales están listos. ¿Qué orden ejecutamos hoy?</div>`;
             cargarHistorialServidor();
         }
 
@@ -291,16 +331,28 @@
             if (hacerScroll) chat.scrollTop = chat.scrollHeight;
         }
 
-        function ponerEjemplo(t) { document.getElementById('mensaje').value = t; document.getElementById('mensaje').focus(); }
-
         async function enviarOrden() {
             const input = document.getElementById('mensaje');
             const texto = input.value.trim();
-            if (!texto) return;
+            
+            if (!texto && !archivoSeleccionado) return;
 
-            añadirMensaje(texto, 'user');
+            const formData = new FormData();
+            formData.append('comando', texto);
+            if (archivoSeleccionado) {
+                formData.append('imagen', archivoSeleccionado);
+            }
+
+            let mensajeUI = texto;
+            if (archivoSeleccionado) {
+                mensajeUI += ` <br><small style="color:#ff6666;">🖼️ [Imagen adjunta: ${archivoSeleccionado.name}]</small>`;
+            }
+            añadirMensaje(mensajeUI, 'user');
+            
             input.value = '';
+            cancelarArchivo();
 
+            // Desplegar animación de typing
             const chat = document.getElementById('chat');
             const indicador = document.createElement('div');
             indicador.className = 'message assistant';
@@ -312,8 +364,7 @@
             try {
                 const response = await fetch('/asistente', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ comando: texto })    
+                    body: formData // Enviamos multipart/form-data directamente al Flask
                 });
                 const data = await response.json();
                 
@@ -325,7 +376,7 @@
             } catch (error) {
                 const currentIndicator = document.getElementById('typing-indicator');
                 if (currentIndicator) currentIndicator.remove();
-                añadirMensaje('Servidor ocupado. Intenta de nuevo en unos segundos.', 'assistant');
+                añadirMensaje('Servidor ocupado o archivo muy pesado. Intenta de nuevo.', 'assistant');
             }
         }
 
