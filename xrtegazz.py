@@ -9,19 +9,14 @@ import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
 
-# Cargar variables de entorno locales desde el archivo .env
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# 🔑 SEGURIDAD: Lectura de claves firmadas desde variables de entorno
 app.secret_key = os.environ.get("SECRET_KEY", "clave_por_defecto_segura_2026")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
-# =========================================================================
-# 🗄️ CONFIGURACIÓN Y CONEXIÓN A BASE DE DATOS MYSQL (AIVEN CLOUD READY)
-# =========================================================================
 DB_CONFIG = {
     'host': os.environ.get("DB_HOST", "localhost"),
     'user': os.environ.get("DB_USER", "root"),       
@@ -31,22 +26,23 @@ DB_CONFIG = {
 }
 
 def obtener_conexion_db():
-    """Establece una conexión limpia y segura con la base de datos MySQL."""
+    """Establece una conexión segura con Aiven, ignorando la verificación estricta del certificado."""
     try:
-        if "aivencloud.com" in DB_CONFIG['host']:
-            conexion = mysql.connector.connect(
-                **DB_CONFIG,
-                ssl_disabled=False
-            )
-        else:
-            conexion = mysql.connector.connect(**DB_CONFIG)
-            
-        if conexion.is_connected():
-            return conexion
+        config = {
+            'host': os.environ.get("DB_HOST"),
+            'user': os.environ.get("DB_USER"),
+            'password': os.environ.get("DB_PASSWORD"),
+            'database': os.environ.get("DB_NAME"),
+            'port': int(os.environ.get("DB_PORT", 23014)),
+            'ssl_disabled': False,             # Esto habilita SSL
+            'ssl_verify_identity': False,      # Esto evita el error de certificado inválido
+            'ssl_verify_cert': False           # Esto permite conectar sin el archivo local ca.pem
+        }
+        conexion = mysql.connector.connect(**config)
+        return conexion
     except Error as e:
         print(f"❌ Error al conectar a MySQL: {e}")
         return None
-
 def inicializar_tablas_db():
     """Crea las tablas automáticamente en la nube si no existen."""
     conexion = obtener_conexion_db()
