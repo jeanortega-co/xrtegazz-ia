@@ -3,7 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#050507">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="XRTEGAZZ IA">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/static/logo.png" type="image/png">
     <title>XRTEGAZZ IA</title>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registrado con éxito', reg))
+                    .catch(err => console.error('Error al registrar el Service Worker', err));
+            });
+        }
+    </script>
     <style>
         html {
             background: #050507; 
@@ -31,6 +46,8 @@
         .topbar h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.05em; font-weight: 800; color: #ffffff; }
         .topbar p { margin: 4px 0 0; color: #cca3a3; opacity: 0.8; font-size: 0.85rem; }
         .auth-trigger-btn { background: linear-gradient(135deg, #cc0000, #7a0000); border: 1px solid #ff3333; color: #ffffff; padding: 8px 16px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: all 0.2s ease; white-space: nowrap; }
+        .install-btn { background: linear-gradient(135deg, #ffd54f, #ff8f00); border: 1px solid #ffbf47; color: #1a1200; padding: 8px 12px; border-radius: 12px; cursor: pointer; font-weight: 800; font-size: 0.85rem; box-shadow: 0 10px 24px rgba(255, 173, 0, 0.25); transition: transform 0.15s ease, box-shadow 0.15s ease; white-space: nowrap; }
+        .install-btn:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(255, 173, 0, 0.35); }
         .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 7, 0.85); backdrop-filter: blur(8px); display: flex; justify-content: center; align-items: center; z-index: 100; padding: 10px; box-sizing: border-box; }
         .modal-card { width: 100%; max-width: 450px; background: #0d0d0f; border: 1px solid rgba(255, 51, 51, 0.25); border-radius: 20px; padding: 24px; position: relative; box-sizing: border-box; max-height: 90vh; overflow-y: auto; }
         .close-modal { position: absolute; top: 14px; right: 16px; background: transparent; border: none; color: #cca3a3; font-size: 1.3rem; cursor: pointer; }
@@ -117,7 +134,8 @@
                     <p id="topbar-subtitle">Tu asistente inteligente local operativo.</p>
                 </div>
             </div>
-            <div style="display:flex; gap:8px; flex-shrink: 0;">
+            <div style="display:flex; gap:8px; flex-shrink: 0; align-items:center;">
+                <button id="btn-install-app" class="install-btn" onclick="instalarApp()" title="Intenta instalar la app y, si no es posible, descarga el paquete PWA">⬇ Descargar / Instalar</button>
                 <button id="btn-admin-panel" class="auth-trigger-btn hidden" onclick="abrirAdminPanel()" style="background:#5e0000; border-color:#ff4d4d;">Admin</button>
                 <button id="btn-auth-trigger" class="auth-trigger-btn" onclick="abrirModal()">Iniciar Sesión</button>
             </div>
@@ -183,6 +201,7 @@
         let usuarioLogueado = null;
         let modoActual = 'login';
         let archivoSeleccionado = null;
+        let deferredPrompt = null;
         
         function actualizarVistaPreviaArchivo() {
             const input = document.getElementById('input-archivo');
@@ -244,6 +263,45 @@
 
         function cerrarModal() { 
             document.getElementById('modal-auth').classList.add('hidden'); 
+        }
+
+        async function instalarApp() {
+            if (deferredPrompt) {
+                try {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        document.getElementById('btn-install-app').classList.add('hidden');
+                    }
+                } catch (error) {
+                    console.error('Error al iniciar la instalación:', error);
+                } finally {
+                    deferredPrompt = null;
+                }
+                return;
+            }
+
+            const link = document.createElement('a');
+            link.href = '/download/pwa';
+            link.rel = 'noopener';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            const ua = navigator.userAgent || '';
+            const esAndroid = /Android/i.test(ua);
+            const esIOS = /iPhone|iPad|iPod/i.test(ua);
+            const esWindows = /Windows/i.test(ua);
+
+            if (esIOS) {
+                setTimeout(() => alert('Si la descarga no empieza, abre el menú Compartir y elige “Añadir a pantalla de inicio”.'), 300);
+            } else if (esAndroid) {
+                setTimeout(() => alert('Si el archivo no se descarga, abre el menú del navegador y usa “Instalar app” o “Añadir a pantalla de inicio”.'), 300);
+            } else if (esWindows) {
+                setTimeout(() => alert('La descarga ya comenzó. Si tu navegador no muestra la opción de instalación, usa el menú del navegador para “Instalar app”.'), 300);
+            } else {
+                setTimeout(() => alert('La descarga ya comenzó; si tu navegador no muestra la opción de instalación, usa el menú del navegador para “Instalar app” o “Añadir a pantalla de inicio”.'), 300);
+            }
         }
 
         function cambiarTab(modo) {
@@ -423,6 +481,19 @@
                 event.preventDefault(); 
                 enviarOrden();
             }
+        });
+
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            deferredPrompt = event;
+            const btnInstall = document.getElementById('btn-install-app');
+            if (btnInstall) btnInstall.textContent = '⬇ Instalar app';
+        });
+
+        window.addEventListener('appinstalled', () => {
+            const btnInstall = document.getElementById('btn-install-app');
+            if (btnInstall) btnInstall.classList.add('hidden');
+            deferredPrompt = null;
         });
 
         document.addEventListener("DOMContentLoaded", async () => {

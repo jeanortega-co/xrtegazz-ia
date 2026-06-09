@@ -1,9 +1,11 @@
-﻿from flask import Flask, request, jsonify, send_file, session
+﻿from flask import Flask, request, jsonify, send_file, session, send_from_directory
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import time
 import base64
+import io
+import zipfile
 from urllib.parse import quote_plus
 import requests 
 import mysql.connector
@@ -396,6 +398,32 @@ def admin_ver_chat_usuario(usuario_target):
 @app.route('/')
 def index():
     return send_file('index.html')
+
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_from_directory('.', 'manifest.json', mimetype='application/manifest+json')
+
+@app.route('/sw.js')
+def serve_sw():
+    return send_from_directory('.', 'sw.js', mimetype='application/javascript')
+
+@app.route('/download/pwa')
+def download_pwa_package():
+    """Genera un paquete descargable de la PWA para instalación manual."""
+    memory_file = io.BytesIO()
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for name in ['index.html', 'manifest.json', 'sw.js']:
+            zf.write(name, arcname=name)
+        if os.path.exists('static/logo.png'):
+            zf.write('static/logo.png', arcname='static/logo.png')
+
+    memory_file.seek(0)
+    return send_file(
+        memory_file,
+        download_name='xrtegazz-ia-pwa.zip',
+        mimetype='application/zip',
+        as_attachment=True
+    )
 
 KNOWN_APPS = [
     'bloc de notas', 'notepad', 'calculadora', 'calc', 'paint', 'spotify',

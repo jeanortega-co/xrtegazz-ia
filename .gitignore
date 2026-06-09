@@ -8,4 +8,4 @@ historial_chats/
 # Archivos basura y temporales de Python
 __pycache__/
 *.pyc
-.vscode/
+.vscode/    
