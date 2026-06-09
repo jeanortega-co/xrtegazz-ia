@@ -39,14 +39,17 @@
         .auth-tab.active { color: #ff4d4d; border-bottom: 2px solid #ff3333; }
         .form-group { display: grid; gap: 5px; margin-bottom: 14px; }
         .form-group input { background: #141417; border: 1px solid rgba(255, 51, 51, 0.18); padding: 10px 12px; border-radius: 10px; color: #ffffff; outline: none; }
-        .auth-btn { width: 100%; border: none; border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #cc0000, #7a0000); color: #ffffff; font-weight: 700; cursor: pointer; }
+        
+        /* Modificado botón auth para soportar estado deshabilitado */
+        .auth-btn { width: 100%; border: none; border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #cc0000, #7a0000); color: #ffffff; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+        .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; background: #331111; }
+        
         .chat { padding: 24px; display: flex; flex-direction: column; gap: 14px; height: 420px; overflow-y: auto; background: #070709; flex-grow: 1; }
         .message { padding: 12px 16px; border-radius: 16px; font-size: 0.93rem; max-width: 80%; word-break: break-word; }
         .message.user { align-self: flex-end; background: rgba(255, 51, 51, 0.08); border: 1px solid rgba(255, 51, 51, 0.22); }
         .message.assistant { align-self: flex-start; background: #121216; border: 1px solid rgba(255, 255, 255, 0.04); }
         .input-area { padding: 18px 24px 24px; background: #0d0d0f; border-top: 1px solid rgba(255, 51, 51, 0.1); flex-shrink: 0; }
         
-        /* Contenedor de botones inferiores ajustado */
         .action-buttons { display: flex; gap: 10px; margin-top: 10px; }
         .btn-send { flex-grow: 1; border: none; border-radius: 12px; padding: 12px; background: linear-gradient(135deg, #cc0000, #7a0000); color: #ffffff; font-weight: 700; cursor: pointer; font-size: 1rem; }
         .btn-attach { width: 50px; border: 1px solid rgba(255, 51, 51, 0.3); border-radius: 12px; padding: 12px; background: #141417; color: #ffffff; font-size: 1.1rem; cursor: pointer; display: grid; place-items: center; transition: background 0.2s; }
@@ -57,7 +60,6 @@
         .chip { padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.02); color: #ffcccc; border: 1px solid rgba(255, 51, 51, 0.12); cursor: pointer; font-size: 0.8rem; }
         .hidden { display: none !important; }
 
-        /* 🤖 ANIMACIÓN DE ESCRITURA */
         .typing-container { display: flex; align-items: center; gap: 5px; height: 20px; margin-top: 5px; }
         .typing-container span { width: 7px; height: 7px; background: #ff3333; border-radius: 50%; display: inline-block; animation: bounce 1.3s infinite ease-in-out both; }
         .typing-container span:nth-child(1) { animation-delay: -0.32s; }
@@ -67,7 +69,6 @@
             40% { transform: scale(1); opacity: 1; }
         }
 
-        /* 📱 MEDIA QUERIES PARA DISPOSITIVOS MÓVILES */
         @media (max-width: 600px) {
             body { padding: 0; background: #050507; }
             .app { width: 100vw; height: 100vh; height: -webkit-fill-available; border: none; border-radius: 0; }
@@ -88,24 +89,21 @@
             #admin-visor-mensajes { width: 100% !important; height: 70% !important; }
         }
 
-        /* --- ARREGLO DE ESTILO DEL ÁREA DE ENTRADA --- */
         .input-area textarea { 
             width: 100%; 
-            /* min-height: 50px; <-- Antes */
-            /* max-height: 120px; <-- Antes */
-            height: 80px; /* Nuevo tamaño base */
-            min-height: 80px; /* Mínimo */
-            max-height: 200px; /* Máximo */
+            height: 80px; 
+            min-height: 80px; 
+            max-height: 200px; 
             box-sizing: border-box; 
-            resize: vertical; /* Permitir cambiar tamaño vertical */
+            resize: vertical; 
             border: 1px solid rgba(255, 51, 51, 0.18); 
             border-radius: 14px; 
             background: #141417; 
             color: #ffffff; 
-            padding: 12px 16px; /* Mejor padding */
+            padding: 12px 16px; 
             outline: none; 
             font-size: 1rem; 
-            line-height: 1.5; /* Mejor legibilidad */
+            line-height: 1.5; 
         }
     </style>
 </head>
@@ -254,17 +252,25 @@
             document.getElementById('tab-registro').classList.toggle('active', modo === 'registro');
             document.getElementById('group-nombre').classList.toggle('hidden', modo === 'login');
             document.getElementById('btn-submit-auth').innerText = modo === 'login' ? 'Ingresar' : 'Registrar Cuenta';
+            document.getElementById('auth-feedback').classList.add('hidden');
         }
 
+        // 🚀 FUNCIÓN DE AUTENTICACIÓN OPTIMIZADA CON FEEDBACK INMEDIATO
         async function procesarAuth() {
             const usuario = document.getElementById('auth-usuario').value.trim();
             const password = document.getElementById('auth-password').value.trim();
             const nombre = document.getElementById('auth-nombre').value.trim();
+            const btnSubmit = document.getElementById('btn-submit-auth');
 
             if (!usuario || !password || (modoActual === 'registro' && !nombre)) {
                 mostrarFeedback('Completa todos los campos.', 'error');
                 return;
             }
+
+            // Cambiar dinámicamente el estado del botón al presionar
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = modoActual === 'login' ? '🔑 Iniciando sesión...' : '📝 Registrando usuario...';
+            mostrarFeedback(modoActual === 'login' ? 'Conectando con el servidor...' : 'Creando perfil en la base de datos...', 'success');
 
             const url = modoActual === 'login' ? '/login' : '/registrar';
             const payload = modoActual === 'login' ? { usuario, password } : { usuario, password, nombre };
@@ -277,22 +283,35 @@
                 });
                 const data = await res.json();
 
-                if (!res.ok) { mostrarFeedback(data.error, 'error'); return; }
+                if (!res.ok) { 
+                    mostrarFeedback(data.error, 'error'); 
+                    // Reestablecer botón si falla
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerText = modoActual === 'login' ? 'Ingresar' : 'Registrar Cuenta';
+                    return; 
+                }
 
                 if (modoActual === 'login') {
                     establecerUsuarioUI(data.nombre);
                     cerrarModal();
                 } else {
-                    mostrarFeedback('¡Cuenta creada! Cambiando a ingreso...', 'success');
+                    mostrarFeedback('¡Cuenta creada con éxito! Cambiando a ingreso...', 'success');
                     setTimeout(() => cambiarTab('login'), 1200);
                 }
-            } catch (e) { mostrarFeedback('Error al conectar con el backend.', 'error'); }
+            } catch (e) { 
+                mostrarFeedback('Error al conectar con el backend.', 'error'); 
+            } finally {
+                // Devolver el botón a la normalidad siempre que termine el flujo técnico
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = modoActual === 'login' ? 'Ingresar' : 'Registrar Cuenta';
+            }
         }
 
         function mostrarFeedback(msg, tipo) {
             const f = document.getElementById('auth-feedback');
             f.innerText = msg;
             f.className = `auth-msg ${tipo}`;
+            f.style.color = tipo === 'error' ? '#ff4d4d' : '#4dff4d'; // Asegurar colores legibles de éxito/error
             f.classList.remove('hidden');
         }
 
@@ -336,8 +355,8 @@
         function añadirMensaje(texto, tipo, hacerScroll = true) {
             const chat = document.getElementById('chat');
             const mensaje = document.createElement('div');
-            mensaje.className = `message ${tipo}`;
             const contenido = tipo === 'assistant' ? formatearTexto(texto) : texto;
+            mensaje.className = `message ${tipo}`;
             mensaje.innerHTML = `<small>${tipo === 'user' ? 'Tú' : 'XRTEGAZZ IA'}</small><div>${contenido}</div>`;
             chat.appendChild(mensaje);
             if (hacerScroll) chat.scrollTop = chat.scrollHeight;
@@ -349,25 +368,21 @@
             
             if (!texto && !archivoSeleccionado) return;
 
-            // Construir el FormData dinámico en lugar de enviar un JSON estático
             const formData = new FormData();
             formData.append('comando', texto);
             if (archivoSeleccionado) {
                 formData.append('imagen', archivoSeleccionado);
             }
 
-            // Mostrar el mensaje en UI según corresponda
             let mensajeUI = texto;
             if (archivoSeleccionado) {
                 mensajeUI += ` <br><small style="color:#ff6666;">🖼️ [Imagen adjunta para análisis]</small>`;
             }
             añadirMensaje(mensajeUI, 'user');
             
-            // Limpieza inmediata del input area
             input.value = '';
             cancelarArchivo();
 
-            // Desplegar animación de typing
             const chat = document.getElementById('chat');
             const indicador = document.createElement('div');
             indicador.className = 'message assistant';
@@ -377,24 +392,20 @@
             chat.scrollTop = chat.scrollHeight;
 
             try {
-                // --- ARREGLO DE COMUNICACIÓN (FORMDATA Y JSON) ---
                 const response = await fetch('/asistente', {
                     method: 'POST',
-                    body: formData // Enviamos multipart/form-data directamente al Flask
+                    body: formData 
                 });
                 
-                // Asegurarse de que el servidor siempre devuelve JSON, incluso en error
                 const data = await response.json();
                 
                 const currentIndicator = document.getElementById('typing-indicator');
                 if (currentIndicator) currentIndicator.remove();
 
-                // Si el servidor devolvió un error JSON estructurado (ej. { error: "..." })
                 if (!response.ok && data.error) {
                     throw new Error(data.error);
                 }
 
-                // Si es un éxito, mostrar la respuesta
                 añadirMensaje(data.respuesta, 'assistant');
                 if (data.url) window.open(data.url, '_blank');
 
@@ -402,7 +413,6 @@
                 const currentIndicator = document.getElementById('typing-indicator');
                 if (currentIndicator) currentIndicator.remove();
                 
-                // Mostrar un mensaje de error más claro en el chat
                 añadirMensaje('🤖 Ups, ocurrió un problema de comunicación con la IA. Intenta de nuevo o verifica el servidor.', 'assistant');
                 console.error("Error en enviarOrden:", error);
             }
