@@ -1,15 +1,7 @@
-# Ocultar credenciales y configuración local
+
 .env
-
-# Ignorar archivos locales de datos y historial
 usuarios.json
-memoria_*.json
-historial_chats/
-
-# Mantener el manifiesto PWA en GitHub
 !manifest.json
-
-# Archivos basura y temporales de Python
 __pycache__/
 *.pyc
-.vscode/    
+.vscode/   

@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin XRTEGAZZ</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
+    body { margin: 0; min-height:100vh; background: linear-gradient(145deg,#07080b,#10131a 42%,#08090d 100%); color:#f3efe8; }
+    a { color: inherit; text-decoration: none; }
+    .app { display:flex; min-height:100vh; overflow:hidden; }
+    .sidebar { width:280px; border-right:1px solid rgba(255,255,255,0.08); background: rgba(8,10,14,0.96); padding:18px 12px; display:flex; flex-direction:column; gap:12px; position:sticky; top:0; height:100vh; overflow-y:auto; overflow-x:hidden; }
+    .brand { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; border-radius:16px; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); }
+    .brand h1 { font-size:1rem; margin:0; }
+    .brand span { color:#d7d2c6; font-size:0.82rem; }
+    .nav-btn { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:14px; border:1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); color:#efe9dc; cursor:pointer; }
+    .nav-btn.active { background: linear-gradient(145deg, rgba(247,212,107,0.14), rgba(255,255,255,0.03)); border-color: rgba(247,212,107,0.35); color:#fff7dd; }
+    .pill { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 9px; font-size:0.78rem; color:#d7d2c6; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); }
+    .content { flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.08); background: rgba(10,12,17,0.88); backdrop-filter: blur(10px); }
+    .topbar h2 { margin:0; font-size:1.1rem; }
+    .topbar p { margin:3px 0 0; color:#d9d4c7; font-size:0.9rem; }
+    .workspace { display:flex; flex:1; overflow:hidden; min-height:0; }
+    .panel { flex:1; padding:16px; overflow-y:auto; overflow-x:hidden; min-height:0; display:none; }
+    .panel.active { display:flex; flex-direction:column; min-height:0; }
+    .grid { display:grid; gap:14px; }
+    .cards { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px; }
+    .card { background: linear-gradient(145deg, rgba(16,18,24,0.98), rgba(9,10,14,0.98)); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:14px; box-shadow: 0 18px 30px rgba(0,0,0,0.35); }
+    .card h3 { margin:0 0 6px; font-size:1rem; }
+    .card p { color:#d8d2c6; font-size:0.92rem; line-height:1.35; margin:0 0 10px; }
+    .chat-shell { display:grid; grid-template-columns: 320px 1fr; gap:14px; height:calc(100vh - 86px); min-height:0; overflow:hidden; }
+    .users-list, .chat-box { background: linear-gradient(145deg, rgba(16,18,24,0.98), rgba(9,10,14,0.98)); border:1px solid rgba(255,255,255,0.08); border-radius:18px; padding:12px; box-shadow: 0 18px 30px rgba(0,0,0,0.35); overflow:hidden; min-height:0; display:flex; flex-direction:column; }
+    .users-list { overflow-y:auto; overflow-x:hidden; }
+    .user-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); cursor:pointer; margin-bottom:8px; }
+    .user-row.active { background: rgba(247,212,107,0.08); border-color: rgba(247,212,107,0.35); }
+    .user-row.admin-main { background: linear-gradient(145deg, rgba(247,212,107,0.12), rgba(255,255,255,0.03)); border-color: rgba(247,212,107,0.45); }
+    .user-meta strong { display:block; font-size:0.95rem; }
+    .user-meta span { color:#c7c0b6; font-size:0.82rem; }
+    .badge-unread { background:#ffce4b; color:#16110a; border-radius:999px; padding:4px 7px; font-size:0.72rem; font-weight:800; }
+    .badge-admin { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:4px 8px; font-size:0.72rem; font-weight:800; color:#16110a; background:#ffce4b; }
+    .chat-header { display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px; }
+    .chat-body { flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column; gap:10px; padding-top:10px; }
+    .msg { max-width:82%; padding:10px 12px; border-radius:14px; line-height:1.35; font-size:0.93rem; }
+    .msg.user { align-self:flex-end; background: linear-gradient(145deg, #244d31, #17311f); border:1px solid rgba(121,255,154,0.15); }
+    .msg.assistant { align-self:flex-start; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); }
+    .msg-header { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; margin-bottom:6px; }
+    .msg-delete { border:none; background:rgba(255,255,255,0.08); color:#fff; border-radius:8px; padding:4px 7px; cursor:pointer; font-size:0.78rem; line-height:1; }
+    .msg-delete:hover { background: rgba(255,107,107,0.18); }
+    .hidden { display:none !important; }
+    .table-wrap { overflow:auto; max-height: calc(100vh - 220px); }
+    table { width:100%; border-collapse: collapse; font-size:0.92rem; }
+    th, td { text-align:left; padding:10px 8px; border-bottom:1px solid rgba(255,255,255,0.08); vertical-align:top; }
+    th { color:#ffe6a1; position:sticky; top:0; background: rgba(10,12,17,0.98); z-index:1; }
+    .search { display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:12px; background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); margin-bottom:10px; }
+    .search input { border:none; outline:none; background:transparent; color:#fff; width:100%; font-size:0.92rem; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .btn { border:none; border-radius:10px; padding:8px 10px; font-weight:800; cursor:pointer; }
+    .btn.accept { background: linear-gradient(135deg, #2fbf6e, #1d7d49); color:#07130c; }
+    .btn.reject { background: linear-gradient(135deg, #ff6b6b, #a12828); color:#fff; }
+    .chip { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 9px; border:1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color:#eee; font-size:0.8rem; }
+    @media (max-width: 1080px) { .chat-shell { grid-template-columns: 1fr; height:auto; } .chat-body { height:380px; } .sidebar { position:static; width:100%; height:auto; } .app { flex-direction:column; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div>
+          <h1>XRTEGAZZ Admin</h1>
+          <span>Centro de control</span>
+        </div>
+        <span class="pill">Live</span>
+      </div>
+      <button class="nav-btn active" data-target="mensajeria">Mensajería <span class="pill">Chats</span></button>
+      <button class="nav-btn" data-target="vip">Solicitudes VIP <span class="pill">Pendientes</span></button>
+      <button class="nav-btn" data-target="usuarios">Usuarios <span class="pill">Global</span></button>
+      <div class="card" style="margin-top:auto;">
+        <h3>Resumen</h3>
+        <p>Panel rápido para supervisar mensajes, solicitudes VIP y usuarios registrados.</p>
+        <div class="actions">
+          <a class="btn accept" href="/">Volver al chat</a>
+        </div>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="topbar">
+        <div>
+          <h2 id="panel-title">Mensajería</h2>
+          <p id="panel-subtitle">Carga rápida de chats y conversaciones activas.</p>
+        </div>
+        <div class="pill">Modo administrador</div>
+      </header>
+
+      <section class="workspace">
+        <section id="mensajeria" class="panel active">
+          <div class="chat-shell">
+            <aside class="users-list">
+              <div class="chip">Usuarios activos</div>
+              <div id="lista-usuarios-admin" style="margin-top:10px;"></div>
+            </aside>
+            <section class="chat-box">
+              <div class="chat-header">
+                <div>
+                  <strong id="chat-usuario-activo">Selecciona un usuario</strong>
+                  <p id="chat-estado" style="margin:4px 0 0; color:#d8d2c6; font-size:0.85rem;">Convierte la conversación en tiempo real.</p>
+                </div>
+                <div class="actions">
+                  <button id="btn-borrar-historial" class="btn reject hidden" onclick="borrarHistorialUsuario()">Eliminar historial</button>
+                  <span class="pill">XRTEGAZZ IA - Modo Sin Restricciones</span>
+                </div>
+              </div>
+              <div id="chat-mensajes-admin" class="chat-body"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="vip" class="panel">
+          <div class="grid">
+            <div class="card">
+              <h3>Solicitudes VIP</h3>
+              <p>Vista tipo tarjetas con las solicitudes entrantes y sus acciones inmediatas.</p>
+            </div>
+            <div class="card">
+              <h3>Estados</h3>
+              <p>Pendientes, aprobadas y rechazadas en una sola vista ordenada para un control rápido.</p>
+            </div>
+          </div>
+          <div class="card" style="margin-top:14px;">
+            <div class="actions" style="margin-bottom:10px;">
+              <button class="btn accept" onclick="cargarSolicitudes('pendiente')">Pendientes</button>
+              <button class="btn" onclick="cargarSolicitudes('aprobado')">Aprobados</button>
+              <button class="btn reject" onclick="cargarSolicitudes('rechazado')">Rechazados</button>
+            </div>
+            <div id="vip-solicitudes-admin" class="grid"></div>
+          </div>
+        </section>
+
+        <section id="usuarios" class="panel">
+          <div class="card">
+            <h3>Registro global</h3>
+            <p>Tabla de usuarios con buscador rápido, estado VIP y fecha de registro.</p>
+            <div class="search"><span>🔎</span><input id="buscador-usuarios" type="search" placeholder="Buscar por nombre o usuario..." /></div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Usuario</th>
+                    <th>Nombre Real</th>
+                    <th>Estado VIP</th>
+                    <th>Fecha de registro</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-usuarios-admin"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const panelTitle = document.getElementById('panel-title');
+    const panelSubtitle = document.getElementById('panel-subtitle');
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const panels = document.querySelectorAll('.panel');
+
+    async function verificarAccesoAdmin() {
+      try {
+        const res = await fetch('/estado_sesion');
+        const data = await res.json();
+        if (!data.logeado || !data.is_admin) {
+          window.location.href = '/';
+          return false;
+        }
+        return true;
+      } catch (e) {
+        window.location.href = '/';
+        return false;
+      }
+    }
+
+    function activarPanel(id) {
+      navButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.target === id));
+      panels.forEach(panel => panel.classList.toggle('active', panel.id === id));
+      if (id === 'mensajeria') {
+        panelTitle.textContent = 'Mensajería';
+        panelSubtitle.textContent = 'Carga rápida de chats y conversaciones activas.';
+      } else if (id === 'vip') {
+        panelTitle.textContent = 'Solicitudes VIP';
+        panelSubtitle.textContent = 'Aprobación y rechazo rápido de acceso premium.';
+      } else {
+        panelTitle.textContent = 'Usuarios';
+        panelSubtitle.textContent = 'Registro global con búsqueda rápida.';
+      }
+    }
+
+    navButtons.forEach(btn => btn.addEventListener('click', () => activarPanel(btn.dataset.target)));
+
+    async function cargarUsuariosAdmin() {
+      const res = await fetch('/admin/usuarios');
+      const usuarios = await res.json();
+      const tbody = document.getElementById('tabla-usuarios-admin');
+      const buscador = document.getElementById('buscador-usuarios');
+      function render(lista) {
+        tbody.innerHTML = lista.map(u => `
+          <tr>
+            <td>${u.id || ''}</td>
+            <td>@${u.username || ''}</td>
+            <td>${u.nombre || ''}</td>
+            <td>${u.rol === 'administrador' ? 'Admin' : 'Usuario'} </td>
+            <td>${u.fecha_registro ? new Date(u.fecha_registro).toLocaleString('es-ES') : ''}</td>
+          </tr>
+        `).join('');
+      }
+      render(usuarios);
+      buscador.addEventListener('input', () => {
+        const q = buscador.value.toLowerCase();
+        render(usuarios.filter(u => `${u.username} ${u.nombre}`.toLowerCase().includes(q)));
+      });
+    }
+
+    async function cargarSolicitudes(estado = 'pendiente') {
+      const res = await fetch(`/admin/vip/solicitudes?estado=${estado}`);
+      const items = await res.json();
+      const cont = document.getElementById('vip-solicitudes-admin');
+      if (!items.length) {
+        cont.innerHTML = '<div class="card"><h3>No hay solicitudes</h3><p>No existen solicitudes en esta categoría.</p></div>';
+        return;
+      }
+      cont.innerHTML = items.map(item => `
+        <article class="card">
+          <h3>${item.nombre_real || item.username}</h3>
+          <p><strong>Usuario:</strong> @${item.username}</p>
+          <p><strong>Clave:</strong> ${item.codigo_vip}</p>
+          <p><strong>Estado:</strong> ${item.estado}</p>
+          <p><strong>Fecha:</strong> ${new Date(item.fecha_solicitud).toLocaleString('es-ES')}</p>
+          ${item.estado === 'pendiente' ? `<div class="actions"><button class="btn accept" onclick="aprobarSolicitud(${item.id})">Aceptar</button><button class="btn reject" onclick="rechazarSolicitud(${item.id})">Rechazar</button></div>` : ''}
+        </article>
+      `).join('');
+    }
+
+    async function aprobarSolicitud(id) { await fetch(`/admin/vip/aprobar/${id}`, { method: 'POST' }); cargarSolicitudes('pendiente'); }
+    async function rechazarSolicitud(id) { await fetch(`/admin/vip/rechazar/${id}`, { method: 'POST' }); cargarSolicitudes('pendiente'); }
+
+    async function cargarUsuariosChat() {
+      const res = await fetch('/admin/usuarios');
+      const usuarios = await res.json();
+      const usuariosOrdenados = [...usuarios].sort((a, b) => {
+        if ((a.username || '').toLowerCase() === 'xrtegazz') return -1;
+        if ((b.username || '').toLowerCase() === 'xrtegazz') return 1;
+        return (a.nombre || a.username || '').localeCompare((b.nombre || b.username || ''), 'es', { sensitivity: 'base' });
+      });
+      const lista = document.getElementById('lista-usuarios-admin');
+      lista.innerHTML = usuariosOrdenados.map(u => {
+        const esAdminPrincipal = (u.username || '').toLowerCase() === 'xrtegazz';
+        const nombreVisible = esAdminPrincipal ? 'xrtegazz (Admin)' : `@${u.username}`;
+        return `
+        <div class="user-row ${esAdminPrincipal ? 'admin-main' : ''}" onclick="verChatUsuario('${u.username}')">
+          <div class="user-meta">
+            <strong>${nombreVisible}</strong>
+            <span>${u.nombre || 'Sin nombre'}</span>
+          </div>
+          ${esAdminPrincipal ? '<span class="badge-admin">Admin</span>' : '<span class="badge-unread">•</span>'}
+        </div>
+      `;
+      }).join('');
+    }
+
+    let usuarioChatActivo = '';
+
+    async function verChatUsuario(user) {
+      usuarioChatActivo = user;
+      const esAdminPrincipal = user.toLowerCase() === 'xrtegazz';
+      document.getElementById('chat-usuario-activo').textContent = esAdminPrincipal ? 'xrtegazz (Admin)' : `@${user}`;
+      document.getElementById('chat-estado').textContent = esAdminPrincipal ? 'Conversación principal del administrador.' : 'Cargando conversación…';
+      const btnBorrarHistorial = document.getElementById('btn-borrar-historial');
+      btnBorrarHistorial.classList.remove('hidden');
+      btnBorrarHistorial.textContent = esAdminPrincipal ? 'Eliminar conversación principal 🗑️' : 'Eliminar historial';
+
+      const res = await fetch(`/admin/chat/${encodeURIComponent(user)}`);
+      const mensajes = await res.json();
+      const cont = document.getElementById('chat-mensajes-admin');
+      cont.innerHTML = mensajes.map(m => `
+        <div class="msg ${m.remitente === 'user' ? 'user' : 'assistant'}" data-mensaje-id="${m.id}">
+          <div class="msg-header">
+            <strong>${m.remitente === 'user' ? 'Usuario' : 'XRTEGAZZ IA'}</strong>
+            <button class="msg-delete" title="Eliminar mensaje" onclick="borrarMensajeAdmin('${user}', ${m.id}, this)">🗑️</button>
+          </div>
+          <div class="msg-texto"></div>
+        </div>
+      `).join('');
+      cont.querySelectorAll('.msg-texto').forEach((node, index) => {
+        node.textContent = mensajes[index].texto || '';
+      });
+      document.getElementById('chat-estado').textContent = `${mensajes.length} mensajes cargados`;
+    }
+
+    async function borrarMensajeAdmin(usuario, idMensaje, boton) {
+      if (!usuario || !idMensaje) return;
+      const confirmado = confirm('¿Eliminar este mensaje del historial?');
+      if (!confirmado) return;
+
+      boton.disabled = true;
+      boton.textContent = '...';
+
+      try {
+        const res = await fetch(`/admin/chat/${encodeURIComponent(usuario)}/borrar_mensaje/${idMensaje}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error || 'No se pudo eliminar el mensaje.');
+          return;
+        }
+
+        const tarjeta = boton.closest('.msg');
+        if (tarjeta) tarjeta.remove();
+
+        const estado = document.getElementById('chat-estado');
+        const restantes = document.querySelectorAll('#chat-mensajes-admin .msg').length;
+        if (estado) estado.textContent = `${restantes} mensajes cargados`;
+      } catch (error) {
+        alert('Error de comunicación con el servidor.');
+      } finally {
+        boton.disabled = false;
+        boton.textContent = '🗑️';
+      }
+    }
+
+    async function borrarHistorialUsuario() {
+      if (!usuarioChatActivo) return;
+      const confirmado = confirm(`¿Seguro que quieres eliminar el historial de @${usuarioChatActivo}?`);
+      if (!confirmado) return;
+      const res = await fetch(`/admin/chat/${encodeURIComponent(usuarioChatActivo)}/borrar_historial`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'No se pudo borrar el historial.');
+        return;
+      }
+      await verChatUsuario(usuarioChatActivo);
+      document.getElementById('chat-estado').textContent = 'Historial eliminado y actualizado.';
+      await cargarUsuariosChat();
+      alert(data.mensaje || 'Historial eliminado.');
+    }
+
+    (async function inicializarAdmin() {
+      const permitido = await verificarAccesoAdmin();
+      if (!permitido) return;
+      cargarUsuariosAdmin();
+      cargarSolicitudes('pendiente');
+      cargarUsuariosChat();
+    })();
+  </script>
+</body>
+</html>

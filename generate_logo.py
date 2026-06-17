@@ -8,25 +8,20 @@ except ImportError as exc:
 p = Path('static')
 p.mkdir(exist_ok=True)
 
-img = Image.new('RGBA', (512, 512), (0, 0, 0, 0))
+
+img = Image.new('RGBA', (1024, 1024), (0, 0, 0, 255))
 d = ImageDraw.Draw(img)
 
-for i in range(0, 256, 18):
-    alpha = 255 if i < 128 else 180
-    d.rounded_rectangle([i, 0, 512 - i, 512], radius=40, fill=(255, 51, 51, alpha))
+img = Image.new('RGBA', (1024, 1024), (0, 0, 0, 255))
+d = ImageDraw.Draw(img)
 
-# Glow and center mark
-# d.ellipse((70, 70, 442, 442), fill=(255, 255, 255, 20), outline=(255, 255, 255, 35), width=10)
-# d.text((256, 256), 'X', fill=(255, 255, 255, 240), anchor='mm', font=font)
+x_color = (255, 255, 255, 255)
+line_width = 140
 
-# Simple centered icon mark
-for r in range(12, 0, -2):
-    d.ellipse((256 - r * 16, 256 - r * 16, 256 + r * 16, 256 + r * 16), outline=(255, 255, 255, 35), width=2)
+d.line((300, 300, 724, 724), fill=x_color, width=line_width)
+d.line((724, 300, 300, 724), fill=x_color, width=line_width)
 
-# center X-like shape
-line_color = (255, 255, 255, 245)
-d.line((160, 160, 352, 352), fill=line_color, width=18)
-d.line((352, 160, 160, 352), fill=line_color, width=18)
+img_final = img.resize((512, 512), Image.Resampling.LANCZOS)
+img_final.save(p / 'logo.png')
 
-img.save(p / 'logo.png')
-print('Icono generado en', p / 'logo.png')
+print('Icono premium generado en', p / 'logo.png')
