@@ -1,5 +1,5 @@
-const CACHE_NAME = 'xrtegazz-ia-cache-v10';
-const urlsToCache = ['/', '/admin.html', '/vip.html', '/manifest.json', '/static/logo.png'];
+const CACHE_NAME = 'xrtegazz-ia-cache-v18';
+const urlsToCache = ['/', '/admin.html', '/manifest.json', '/static/logo.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(
