@@ -1,9 +1,33 @@
-
+# Environment variables and credentials
 .env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Virtual environments and dependencies
+venv/
 .venv/
+env/
+node_modules/
+
+# Python and editor caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.vscode/
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+
+# Local data and logs
 data/
 usuarios.json
-!manifest.json
-__pycache__/
-*.pyc
-.vscode/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Vercel local cache
+.vercel/

@@ -43,7 +43,8 @@ DATABASE_POOL_SIZE = int(os.environ.get('DATABASE_POOL_SIZE', '2'))
 
 app = Flask(__name__)
 CORS(app)
-app.secret_key = os.environ.get('SECRET_KEY', 'clave_por_defecto_segura_2026')
+SECRET_KEY = os.environ.get('SECRET_KEY', '').strip() or secrets.token_hex(32)
+app.secret_key = SECRET_KEY
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
